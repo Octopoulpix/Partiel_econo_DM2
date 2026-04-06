@@ -1,0 +1,61 @@
+---
+title: "R_DM_2"
+output: html_document
+---
+
+Library importation
+
+```{r}
+library(haven)
+library(dplyr)
+```
+
+
+# Data visualisation
+
+```{r}
+file = "data/DM_Subject_2_Data.dta"
+df <- read_dta(file)
+
+head(df)
+```
+
+# Part 1
+
+
+```{r}
+
+# filtering the dataframe to keep only observation with wage
+df_wage <- df %>% 
+  filter(!is.na(salmensuel))
+
+
+```
+
+
+`r nrow(df_wage)` observations over `r nrow(df)` have a mensual salary indicated. Indeed the wage is only available in the first and last quarter of the dataframe for employed individuals.
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
