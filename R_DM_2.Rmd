@@ -4,6 +4,7 @@ output: html_document
 ---
 
 Library importation
+regarder stargazer si le temps
 
 ```{r}
 library(haven)
@@ -23,12 +24,12 @@ head(df)
 # Part 1
 
 
+In this part, we looked at employed people, thus we only keep observations in df with a wage associated 
+
 ```{r}
 
-# filtering the dataframe to keep only observation with wage
 df_wage <- df %>% 
-  filter(!is.na(salmensuel))
-
+  filter(!is.na(salhoraire))
 
 ```
 
@@ -36,11 +37,28 @@ df_wage <- df %>%
 `r nrow(df_wage)` observations over `r nrow(df)` have a mensual salary indicated. Indeed the wage is only available in the first and last quarter of the dataframe for employed individuals.
 
 
+
+# Question 1 
+
+We ignore the panel dimension in this question by keeping only the last observed quarter for employed individuals.
+
 ```{r}
+
+df_wage_last <- df_wage %>% 
+  filter(t == 6)
 
 ```
 
 
+
+```{r}
+experience = age - 18
+dependent_variable <- "salhoraire"
+control_variables <- c("origin", "homme", "experience", "experience_carré", "tuu_r")
+as.factor --> pour valeur non ordonnale
+
+
+```
 
 
 
