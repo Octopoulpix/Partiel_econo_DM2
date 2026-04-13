@@ -1,0 +1,157 @@
+---
+title: "R_DM_2"
+output: html_document
+---
+
+Library importation
+regarder stargazer si le temps
+
+```{r necessary library}
+library(haven)
+library(dplyr)
+library(forcats)
+```
+
+
+# Data visualisation
+
+```{r data importation}
+file = "data/DM_Subject_2_Data.dta"
+df <- read_dta(file)
+
+# correction of the salmensuel's computing 
+df$salhoraire <- df$salmensuel / (df$heuretra * 4.33)
+
+head(df)
+```
+
+# Part 1
+
+
+In this part, we looked at employed people, thus we only keep observations in df with a wage associated 
+
+```{r filtering data by hourly wage}
+
+df_wage <- df %>% 
+  filter(!is.na(salhoraire))
+
+```
+
+
+`r nrow(df_wage)` observations over `r nrow(df)` have a mensual salary indicated. Indeed the wage is only available in the first and last quarter of the dataframe for employed individuals.
+
+
+
+# Question 1 
+
+We ignore the panel dimension in this question by keeping only the last observed quarter for employed individuals.
+
+```{r filtering data by timestamp}
+
+df_last_wage <- df_wage %>% 
+  filter(t == 6)
+
+```
+
+
+Creation of new interest variables used in our linear regression.
+Revised_age is a variable where we rescale age in order to have a quadratic relationship between the hourly salary and the age of the worker.
+
+```{r creation of interest variables}
+
+df_last_wage$revised_age <- df_last_wage$age - min(df_last_wage$age)
+
+# capturing the quadratic relation
+df_last_wage$revised_age_squared <- df_last_wage$revised_age ^ 2
+
+```
+
+
+## a) Linear regression results
+
+
+For interest variables we obviously want to include origine because that's what interest us in the regression. To ensure capturing the real prediction of origine on the hourly wage, we need to include other variables that let unchanged the hourly salary all other things being equal. These variables should be related to the hourly wage but not with the origine. We thus selected 4 variables : 
+
+  - "homme", an indicator of being a man (0 if a woman, 1 else)
+  - "revised_age" and "revised_age_squared" (as described above)
+
+These first two variables can quite likely be decorrelated of the origine of people
+
+Lastly we hypothesize that the size of the urban area where people lived are not correlated to there origin which could be debate because rural area are often inhabted by french origin persons.
+
+```{r interest variables}
+
+# as_factor used for nominal variables
+interest_variables <- c("factor(origine)", "factor(homme)", "revised_age", "revised_age_squared", "factor(tuu_r)") 
+
+# as_factor takes as an entry a variable under character or factor type
+df_last_wage$homme <- as.character(df_last_wage$homme)
+
+# as_factor interpret coefficients relatively to the first level in alphebitc order. To have an easier interpretation of the coefficient we will ensure that the compared modality will be France (01) for origin, Man (1) for homme and rural municipality for tuu_r (1)
+
+df_last_wage <- df_last_wage %>% 
+  mutate(
+    # 01 corresponds to a french origin
+    origine <- fct_relevel(.$origine, "01"),
+    
+    # 1 corresponds to being a man
+    homme <- fct_relevel(.$homme, "1"),
+    
+    # 1 corresponds to rural municipality
+    tuu_r <- fct_relevel(.$tuu_r, "1")
+  )
+
+```
+
+## b) Interpretation of orgine's coefficients
+
+```{r level regression}
+
+level_dependent_variable <- "salhoraire"
+
+# reformulate is use to transform vector into official R formula
+# reformulate(c("var1", "var2"), response = "target") returns
+# target ~ var1 + var2
+reg_formula <- reformulate(termlabels= interest_variables, response = level_dependent_variable)
+
+level_reg <- lm(reg_formula, data = df_last_wage)
+
+summary(level_reg)
+
+```
+
+As said before, factored variables can be interpreted relatively to the comparator modality. Thus the regression seems to work because we found that the more you lived in a big city (higher factor tuu_r) the more the model predicts you a higher salary (+ 2 euros if you live in Paris conurbation). Factor(homme) being positive makes the model predicts a higher hourly salary if you are a man than a woman (+ 2 euros). Both of these variables seems to be relevant as the p_value suggest it (statistically significant at the 0.001% level).
+
+Even if revised_age and revised_age squared are not statistically significant, them being positive fits our intuition. 
+
+AS for the origin variable, we also have qualitatively quite good coefficients. Indeed almost every origin leads people to have a smaller hourly wage than a person having french origin at the exception of Northern Europe and Middle East origin. One may easily argue that the former one is due to a higher confindence granted to them than french origin workers. However, very few of them are statistically significant. The two main one are people with North African origin (06) or other African origin (07), perhaps mainly due to a larger diaspora of people of these origins in France. Both of them are negative, according to the model a person with African orgin receives all other things being equal about -2 euros from their hourly salary than french origin people. It is sadly what we could have anticipated, may be due to systemic racism in our society.
+
+
+
+```{r log_linear regression}
+
+log_dependent_variable <- "log(salhoraire)"
+
+reg_formula <- reformulate(termlabels= interest_variables, response = log_dependent_variable)
+
+log_reg <- lm(reg_formula, data = df_last_wage)
+
+summary(log_reg)
+
+```
+As expected we obtain the same result than in the level regression, presented in a different form but with a much higher statistically significativity (especially for revised_age variable).
+
+## c) Adding control variables to resolve partially the endegoneous problem
+
+Our goal is here to obtain a causal regression all else equals to interpretate wage differences as inequalities. But we face usual endogeneic problems in econometric. Endogeneity appears when E[Xepsilon] =/ 0, that is to say when interest variables are correlated with the residuals. This is all-ways the case because it is obviously impossible to explain the effect of a specific variable link to the real world with a finite number of interest variables, but we can try to have an expectation near 0. 
+
+This endogeneity issue is not a problem as long as we only try to predict a result according to a regression model. But here we want to have a causal interpretation of coefficients of ours regressions. To do that we need to erase all bias due to omitted variables.
+
+However we need to be really cautious to not include control variables that are a consequence of the origin of people. In this case the causal effect of origin will be partially captured in the control variable and the inequalities will seems smaller that what they really are (risk of bad controls)
+
+
+
+
+
+
+
