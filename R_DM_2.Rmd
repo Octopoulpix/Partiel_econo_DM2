@@ -149,8 +149,13 @@ This endogeneity issue is not a problem as long as we only try to predict a resu
 
 However we need to be really cautious to not include control variables that are a consequence of the origin of people. In this case the causal effect of origin will be partially captured in the control variable and the inequalities will seems smaller that what they really are (risk of bad controls)
 
+```{r}
 
 
+```
+
+
+# Part 2
 
 
 
