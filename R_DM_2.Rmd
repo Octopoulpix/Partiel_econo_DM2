@@ -10,6 +10,7 @@ regarder stargazer si le temps
 library(haven)
 library(dplyr)
 library(forcats)
+library(stargazer)
 ```
 
 
@@ -141,7 +142,83 @@ summary(log_reg)
 ```
 As expected we obtain the same result than in the level regression, presented in a different form but with a much higher statistically significativity (especially for revised_age variable).
 
-## c) Adding control variables to resolve partially the endegoneous problem
+## c) Diffusion channels of inequalities due to the origin of people
+
+To answer this question we use an iterative method. We first compute a simple regression of hourly salary on origin, then we do for each new potential channel variable a new regression where we add this variable to the vector of interest variables. 
+By comparing the coefficient of origin in each of these regressions we are able to highlight some of the channels.
+
+```{r regression over origin}
+
+log_reg_origin <- lm(log(salhoraire) ~ factor(origine), data= df_last_wage)
+
+summary(log_reg_origin)
+
+```
+
+```{r regression over origin and education}
+
+log_reg_education <- lm(log(salhoraire) ~ factor(origine) + factor(education), data= df_last_wage)
+
+summary(log_reg_education)
+
+```
+
+
+```{r regression over orign, education and contrat}
+
+log_reg_contract <- lm(log(salhoraire) ~ factor(origine) + factor(education) + factor(contrat), data= df_last_wage)
+
+summary(log_reg_contract)
+
+```
+```{r regression over origin, education, type of contract and health}
+
+log_reg_health <- lm(log(salhoraire) ~ factor(origine) + factor(education) + factor(contrat) + factor(sante_declaree), data= df_last_wage)
+
+summary(log_reg_health)
+
+```
+
+For comparing the evolution of origin's coefficients we use the library stargazer which helps to process the information in more readable format.
+
+```{r evolution of coefficients of origin}
+
+stargazer(log_reg_origin, log_reg_education, log_reg_contract, log_reg_health, 
+          type = "text", 
+          column.labels = c("Origin", "+Edu", "+Contract", "+Health"))
+
+```
+
+
+As we can see, adding education to the regression highly modify origin's coefficient. For instance, if we stick to the most significant coefficient which correspond to people with African origin (expect northern Africa) - modality 7 - we see that it increases following the addition of education as an interest variable. Without, the model predicts that these former people receive an hourly wage 17 % smaller than someone with french origin, whereas it predicts only 15 % smaller if we add education. Thus education explains a part of wage inequalities which means that the wage differences is partially ($(0.178 - 0.157) / 0.178 \approx 11.8\%$) conveyed through the education channel. The origin coefficient still remains significant which shows that other diffusion channels exists.
+
+When the coefficient decreases following the insertion of education, which is only the case for factor 5 - Eastern european , this shows that the people with this origin are not paid enough for their level of education. Indeed, if the coefficient is initially close to 0 in the first regression the model predicts for these people the same hourly wage than for the reference group. By adding the education, we see that the model predicts a smaller wage all else equals but education. This mean that the model tend to predict that this person have in general a higher education level than what they are paid for.
+
+Similarly, adding the type of contract increase all orgin's coefficient (except for factor 9 corresponding to Laotian, Cambodian, Vietnamese). The type of contract explains about $(refaire le calcule pour facteur 3 11.8\%$ of discrimination in hourly wage.
+
+Finally, adding personal assessment of an individual's health doesn't modify the coefficient. Therefore origin of people doesn't seem to affect the hourly wage through the health of people. Since health status was not correlated with origin in our sample, it cannot explain why wages differ by origin.
+
+# Question 2
+
+
+
+
+
+
+
+## 
+
+
+
+
+
+
+
+
+
+
+
+Adding control variables to resolve partially the endegoneous problem
 
 Our goal is here to obtain a causal regression all else equals to interpretate wage differences as inequalities. But we face usual endogeneic problems in econometric. Endogeneity appears when E[Xepsilon] =/ 0, that is to say when interest variables are correlated with the residuals. This is all-ways the case because it is obviously impossible to explain the effect of a specific variable link to the real world with a finite number of interest variables, but we can try to have an expectation near 0. 
 
@@ -149,8 +226,27 @@ This endogeneity issue is not a problem as long as we only try to predict a resu
 
 However we need to be really cautious to not include control variables that are a consequence of the origin of people. In this case the causal effect of origin will be partially captured in the control variable and the inequalities will seems smaller that what they really are (risk of bad controls)
 
-```{r}
+```{r education variable}
 
+# we add education to the vector of interest variables
+interest_variables_educ <- c(interest_variables, "factor(education)")
+
+# releveling "education" variable for having the right comparison in the regression
+df_last_wage <- df_last_wage %>% 
+  mutate(
+    # 1 corresponds to a person that has obtain a degree above two years post-baccalaureate
+    education <- fct_relevel(.$education, "1")
+    )
+
+```
+
+
+```{r level regression with education}
+
+reg_formula <- reformulate(termlabels= interest_variables_educ, response = level_dependent_variable)
+level_educ_reg <- lm(formula= reg_formula, data= df_last_wage)
+
+summary(level_educ_reg)
 
 ```
 
