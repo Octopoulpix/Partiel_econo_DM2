@@ -1,6 +1,8 @@
 ---
 title: "R_DM_2"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 Library importation
@@ -12,6 +14,7 @@ library(dplyr)
 library(forcats)
 library(stargazer)
 library(fixest)
+library(plm)
 ```
 
 
@@ -297,10 +300,144 @@ summary(log_reg_iv)
 ```
 Unlike the former regression, the the first stage F-statistic now exceed the rule_of_thumb threshold of 10. As fot the instrumental regression with detailed socioeconomic group, the p-values of F-tests and Sargan test shows that it this model is statistically valid.
 
-However, it is now only possible to reject the Wu-Hausman test with a 10% significativity rate. Even if this evidence of endogenity is more moderate than in the previous model, we will assume, because of the vast research on this topic in econometrics that education is an endogenous variable and should be treated as such. That's why this instrument variable is in our opinion better than an OLS on the log of the hourly wage over education and other explanatory variables.   
+However, it is now only possible to reject the Wu-Hausman test with a 10% significativity rate. Even if this evidence of endogeneity is more moderate than in the previous model, we will assume, because of the vast research on this topic in econometrics that education is an endogenous variable and should be treated as such. That's why this instrument variable is in our opinion better than an OLS on the log of the hourly wage over education and other explanatory variables.   
 
 
 ## d) Interpretation of origin's coefficients 
+
+Thanks to the work done in previous questions, we are know able to interprate in a causal way the coefficient of the second instrumental regression. In the OLS model omitting education, both the 'Maghreb' (06) and 'Rest of Africa' (07) categories exhibited significant wage penalties of 10.3% and 22.1%, respectively (question 1/c). Once education is properly instrumented in our instrumental variable model, the coefficient for the Maghreb becomes statistically insignificant. This reversal suggests that for individuals of Northern African origin, the observed wage gap is primarily explained by differences in level of education  rather than direct labor market discrimination due to origin. 
+In contrast, the penalty for the 'Rest of Africa' remains nearly identical and highly significant (approx. 22%) in both models. This indicates a persistent 'residual' disadvantage for this group that schooling alone cannot bridge. 
+
+
+Furthermore, the gender pay gap widens from 13.6% in the OLS to 17.3% in the instrumental variable model, suggesting that the initial OLS was underestimating the true extent of gender inequality.
+
+These findings confirm the necessity of our IV approach to accurately unpack the complex interactions between social origin, schooling, and earnings.
+
+
+# Question 3
+
+
+From now on, we use the whole dataset at our disposal to be able to erase all unobserved individual terms - unchanged in time - that bias coefficients with whom we are triying to have a causal interpretation of the hourly wage.
+
+Panel regression takes the following form : $$y_{it} = \beta x_{it} + \alpha_i + \epsilon_{it}$$
+Where :
+  - $y_{it}$ is the dependent variable of individual i at time t (in this case the hourly wage)
+  - $x_{it}$ are all explanatory variables of individual i at time t
+  - $\alpha_i$ is the unobserved terms of individual i. these are invariant in time and represent effect such as his talent, his motivation, and so on. 
+  - $\epsilon_{it}$ being the noise of the model
+
+
+```{r panel dataframe for hourly wage}
+
+df_panel_wage <- df_wage %>% 
+  filter(t == 1 | t == 6)
+
+# We transform the dataframe into a panel structure one required for using the plm package
+# index allows to identify the person and the year
+pdata_wage <- pdata.frame(df_panel_wage, index = c("id_individu", "t"))
+
+```
+
+We pre-process this dataframe we the same transformation that we have done in the first two questions
+
+```{r panal dataframe preprocessing}
+
+
+pdata_wage$revised_age <- pdata_wage$age - min(pdata_wage$age)
+
+# capturing the quadratic relation
+pdata_wage$revised_age_squared <- pdata_wage$revised_age ^ 2
+
+
+pdata_wage$homme <- as.character(pdata_wage$homme)
+
+# as_factor interpret coefficients relatively to the first level in alphebitc order. To have an easier interpretation of the coefficient we will ensure that the compared modality will be France (01) for origin, Man (1) for homme and rural municipality for tuu_r (1)
+
+pdata_wage <- pdata_wage %>% 
+  mutate(
+    # 01 corresponds to a french origin
+    origine = fct_relevel(origine, "01"),
+    
+    # 1 corresponds to being a man
+    homme = fct_relevel(homme, "1"),
+    
+    # 1 corresponds to rural municipality
+    tuu_r  = fct_relevel(tuu_r, "1"),
+    
+    # 1 corresponds to people having a degree above two years post-baccalaureate
+    education = fct_relevel(education, "1")
+  )
+
+
+```
+
+
+## a) Random effect panel regression
+
+The goal of panel regression is therefore to obtain a causal interpretation of the effect of explanatory variables on the dependent variable free of all bias due to unobserved ability of individuals (motivation, ...).
+
+Because these unobserved terms are time invariant, the most robust model who assure to have a valid causal interpretation is obtain by doing the usual least squared estimation of coefficient on a model where we substracts the mean over time from the original model.
+This method, called the Fixed effect is super robust but very inflexible, indeed it unfortunatly also prevents to capture the effect of time invariant explanatory variables. 
+
+Step 1 : Original model
+$$y_{it} = \beta x_{it} + \alpha_i + \epsilon_{it}$$
+
+Step 2 : new model obtained by de-meaning the first equation (Within transformation)
+$$(y_{it} - \bar{y}_i) = \beta (x_{it} - \bar{x}_i) + (\alpha_i - \alpha_i) + (\epsilon_{it} - \bar{\epsilon}_i) \\ \iff \\ y^*_{it} = \beta x^*_{it} + \epsilon^*_{it}$$
+Because for all time invariant terms $\frac{1}{n} \sum_{t=1}^{T} x_{it} = x_{it}$, we see there that they also disappear in this new equation.
+
+
+Step 3 : estimation of the coefficients with the transformed equation (OLS)
+$$\min_{\beta} \sum_{i=1}^{n} \sum_{t=1}^{T} (y^*_{it} - \beta x^*_{it})^2$$
+
+Step 4 : Prediction 
+$$\hat{y}_{it} = \hat{\alpha}_i + \hat{\beta} x_{it}$$
+Where $\hat{\alpha}_i = \bar{y}_i - \hat{\beta} \bar{x}_i$
+
+
+As said before the issue with this process is that we loose all time invariant explanatory variable which is here a major issue since we want to find inequalities in wage due to the origin of people, which obviously fall in the forgotten variable. To adress this issue an other process is possible : the random effect regression.
+
+Instead of substracting the entire mean of variables with whom we work we only substracts a certain percentage ($\theta$) of it.
+
+Thus, the first step remains the same, but we apply in step 2 a quasi-difference transformation :
+$$(y_{it} - \theta\bar{y}_i) = (1 - \theta) \beta_{0} + \beta (x_{it} - \theta\bar{x}_i) +  \gamma (1 - \theta) z_{i}+(1 - \theta) \alpha_i + (\epsilon_{it} - \theta\bar{\epsilon}_i) \\ \iff \\ y^*_{it} = \beta x^*_{it} + \gamma z^*_{i} + \nu^*_{it}$$
+where $\theta \in [0,1]$, $z_{i}$ are the time invariant explanatory variables and $\nu^*_{it} = (1 - \theta) \alpha_i + (\epsilon_{it} - \theta\bar{\epsilon}_i) $
+
+Step 3 : estimation of the coefficients with the transformed equation (OLS)
+$$\min_{\beta} \sum_{i=1}^{n} \sum_{t=1}^{T} (y^*_{it} - \beta x^*_{it} - \gamma z^*_{i})^2$$
+
+In step 4, the prediction becomes :
+$$\hat{y}_{it} = \hat{\beta}_0 + \hat{\beta} x_{it} + \gamma\hat{z}_{i}$$
+
+For being able to have a causal interpretation of this model, the sine qua non condition is that the unobserved individual term are uncorrelated to all the explanatory variable : $Cov(X_{it}, \alpha_{i}) = 0, \forall i,t$ and $Cov(Z_{it}, \alpha_{i}) = 0, \forall i, t$.
+
+
+---
+Aside : finding the right $\theta$
+
+$\theta$ is chosen so that it minimizes the serial correlation of errors within the same individual. 
+$$\theta = 1 - \sqrt{\frac{\sigma^2_\epsilon}{\sigma^2_\epsilon + T \sigma^2_\alpha}}$$
+Where T is the number of period in the panel dataframe
+
+We first estimate the variance of the random noise by doing a fixed effects regression and then we estimate the one of the unobserved terms thanks to a between regression (difference over the mean of each person).
+----
+
+In this question we assume the exogeneity of the $\alpha_i$ and so we can use the random effects framework presented above. Because of exogeneity we can have a causal integration that includes invariant time explanatory variables in particular origin.
+
+```{r random effects regression}
+
+re_explanatory_variables <- c(explanatory_variables, "factor(education)")
+
+re_formula <- reformulate(termlabels = re_explanatory_variables, response = log_dependent_variable)
+print(re_formula)
+
+re_reg <- plm(formula = re_formula, data =pdata_wage, model = "random")
+
+summary(re_reg)
+
+```
+
+As seen $\theta$ depends on the number of period T, here we can see that it changes because we have an unbalanced panel, i.e that for some person we don't have both values of their hourly wage (for t = 1 and t = 6)
 
 
 
