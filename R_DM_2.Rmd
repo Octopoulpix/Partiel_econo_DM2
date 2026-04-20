@@ -433,9 +433,15 @@ print(re_formula)
 
 re_reg <- plm(formula = re_formula, data =pdata_wage, model = "random")
 
-summary(re_reg)
-
 ```
+
+
+Before being able to interpret the result of random effects regression we first need to test the exogeneity of the unobserved coefficients with an Hausman test. As the one in question 2, the Hausman test compared a robust model with a more precised one but potentially biased. If coefficients of the risked model corresponds to the one of the robust model (here the fixed effects), then it means the model is non biased. Because in fixed effects regression time invariant variables disappear, the null hypothesis of the Hausman test is : $H_0 : \hat\beta_{tvf} - \hat\beta_{tvr} = 0$ where tvf and tvr stands for respectively time variant variables in fixed effects and random effects model.
+
+
+
+
+
 
 As seen $\theta$ depends on the number of period T, here we can see that it changes because we have an unbalanced panel, i.e that for some person we don't have both values of their hourly wage (for t = 1 and t = 6)
 
