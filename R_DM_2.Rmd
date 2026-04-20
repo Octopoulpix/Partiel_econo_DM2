@@ -412,7 +412,6 @@ $$\hat{y}_{it} = \hat{\beta}_0 + \hat{\beta} x_{it} + \gamma\hat{z}_{i}$$
 For being able to have a causal interpretation of this model, the sine qua non condition is that the unobserved individual term are uncorrelated to all the explanatory variable : $Cov(X_{it}, \alpha_{i}) = 0, \forall i,t$ and $Cov(Z_{it}, \alpha_{i}) = 0, \forall i, t$.
 
 
----
 Aside : finding the right $\theta$
 
 $\theta$ is chosen so that it minimizes the serial correlation of errors within the same individual. 
@@ -420,7 +419,7 @@ $$\theta = 1 - \sqrt{\frac{\sigma^2_\epsilon}{\sigma^2_\epsilon + T \sigma^2_\al
 Where T is the number of period in the panel dataframe
 
 We first estimate the variance of the random noise by doing a fixed effects regression and then we estimate the one of the unobserved terms thanks to a between regression (difference over the mean of each person).
-----
+
 
 In this question we assume the exogeneity of the $\alpha_i$ and so we can use the random effects framework presented above. Because of exogeneity we can have a causal integration that includes invariant time explanatory variables in particular origin.
 
@@ -428,10 +427,10 @@ In this question we assume the exogeneity of the $\alpha_i$ and so we can use th
 
 re_explanatory_variables <- c(explanatory_variables, "factor(education)")
 
-re_formula <- reformulate(termlabels = re_explanatory_variables, response = log_dependent_variable)
-print(re_formula)
+re_log_formula <- reformulate(termlabels = re_explanatory_variables, response = log_dependent_variable)
+print(re_log_formula)
 
-re_reg <- plm(formula = re_formula, data =pdata_wage, model = "random")
+re_log_reg <- plm(formula = re_log_formula, data =pdata_wage, model = "random")
 
 ```
 
@@ -439,18 +438,125 @@ re_reg <- plm(formula = re_formula, data =pdata_wage, model = "random")
 Before being able to interpret the result of random effects regression we first need to test the exogeneity of the unobserved coefficients with an Hausman test. As the one in question 2, the Hausman test compared a robust model with a more precised one but potentially biased. If coefficients of the risked model corresponds to the one of the robust model (here the fixed effects), then it means the model is non biased. Because in fixed effects regression time invariant variables disappear, the null hypothesis of the Hausman test is : $H_0 : \hat\beta_{tvf} - \hat\beta_{tvr} = 0$ where tvf and tvr stands for respectively time variant variables in fixed effects and random effects model.
 
 
+```{r fixed effects regression}
+
+# fixed effects regression (random effects for theta = 1)
+fe_log_reg <- plm (formula = re_log_formula, data = pdata_wage, model = "within")
+
+# Hausman test
+phtest(fe_log_reg, re_log_reg)
+
+```
+As we can see, we reject very significatively the null hypothesis of the Hausman test which mean that our random effects model is not consistant. The causal interpretation of coefficients that results from this model is thus impossible because they may incorporate the effect of the unobserved individual effects in it. Therefore the assumption according to which $ Cov(Z_{it}, \alpha_{i}) = 0, \forall i, t$ can statistically consider as being false. 
+
+That being said, because we assume, wrongly, in the question that the $alpha_i$ are exogeneous to the explanatory variables, we still present below the result of the random effects model but these coefficients should not be seen as valid.
+
+```{r unvalid results of random effects }
+
+summary(re_log_reg)
+
+```
+As explains before $\theta$ depends on the number of period T, here we can see that it changes because we have an unbalanced panel, i.e that for some person we don't have both values of their hourly wage (for t = 1 and t = 6)
+
+Around $\frac{2}{3}$ of the unexplained variance comes from the individual effects. Individual heterogeneity predominates which shows the importance to do a panel approach in this study.
+
+## b) Origin variable in random effects model
+
+This model can handle time invariant explanatory variables (cf previous question).
+However, this model does not resolve potential endogeneity issues. On the contrary, it requires the strong assumption of exogeneity of individual effects ($Cov(X_{it}, \alpha_i) = 0$, \forall i, t) to be valid. If unobserved heterogeneity (such as motivation) is correlated with origin or education, the estimator will be biased. In our case, since the Hausman test rejected the null hypothesis, we know that this model fails to control for this endogeneity bias.
 
 
+## c) correlated unobserved heterogeneity
 
-
-As seen $\theta$ depends on the number of period T, here we can see that it changes because we have an unbalanced panel, i.e that for some person we don't have both values of their hourly wage (for t = 1 and t = 6)
-
-
-
+In question 3/ a) we saw that a fixed effects model is just a specific case of random effects model where $\theta = 1$. If $\theta = 1$ then all time invariant variables, such as origin, disappear and can't be handle by the model.
 
 
 
 # Part 2
+
+
+In this part, we focus on the effect of the origin on the fact of being employed if unemployed.
+
+```{r data preprocessing}
+
+# acteu = 1 if the person is employed, 2 if unemplyed and 3 if inactive
+df_active <- df %>% 
+  filter(acteu %in% c(1,2))
+
+# We transform the dataframe into a panel structure one required for using the plm package
+# index allows to identify the person and the year
+pdata_active <- pdata.frame(df_active, index = c("id_individu", "t"))
+
+```
+
+`Acteu` is the binary dependent variable we want to study, but it's more convenient to take a binary variable that takes its values in {0,1} which is better for having a probability interpretation of the results. We create from `chomeur` (indicator of being unemployed), the indicator of being employed which we will use in the next question as the dependent variable. The closest the predicted value will be closed to one, the more the model will predict a high probability that the individual will be employed.
+
+```{r indicator of being emplyed}
+
+pdata_active <- pdata_active %>% 
+  mutate(
+    being_employed = ifelse(chomeur == 1, 0, 1)
+  )
+
+```
+
+
+# Question 4
+
+Having a binary dependent variable raises issues regarding interpretation of the coefficients if we use a linear estimation. Indeed we can obtain for extreme values of our explanatory variables a predicted value above 1 or under 0 which has no sens considering this is a probability of being employed. But if we are primarily interested in the average marginal effect (the slope of the regression line) rather than individual prediction then an OLS or panel model remains a robust and widely accepted approach in empirical economics. 
+
+## a) random effects model
+
+
+```{r regression variables}
+
+binary_dependent_variable <- "being_employed"
+explanatory_variables <- c("factor(origine)", "factor(homme)", "revised_age", "revised_age_squared", "factor(tuu_r)", "factor(education)")
+
+
+
+pdata_active$revised_age <- pdata_active$age - min(pdata_active$age)
+
+# capturing the quadratic relation
+pdata_active$revised_age_squared <- pdata_active$revised_age ^ 2
+
+
+pdata_active$homme <- as.character(pdata_active$homme)
+
+pdata_active <- pdata_active %>% 
+  mutate(
+    # 01 corresponds to a french origin
+    origine = fct_relevel(origine, "01"),
+    
+    # 1 corresponds to being a man
+    homme = fct_relevel(homme, "1"),
+    
+    # 1 corresponds to rural municipality
+    tuu_r  = fct_relevel(tuu_r, "1"),
+    
+    # 1 corresponds to people having a degree above two years post-baccalaureate
+    education = fct_relevel(education, "1")
+  )
+
+```
+
+
+In this question we use the exact same processus than in question 3/
+
+```{r random effect }
+
+re_binary_formula <- reformulate(termlabels = explanatory_variables, response = binary_dependent_variable)
+print(re_binary_formula)
+
+re_binary_reg <- plm(formula = re_binary_formula, data =pdata_active, model = "random")
+
+```
+
+```{r}
+summary(re_binary_reg)
+```
+
+
 
 
 
