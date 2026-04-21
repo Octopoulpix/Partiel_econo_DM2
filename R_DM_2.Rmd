@@ -15,6 +15,8 @@ library(forcats)
 library(stargazer)
 library(fixest)
 library(plm)
+library(sandwich)
+library(lmtest)
 ```
 
 
@@ -374,6 +376,31 @@ pdata_wage <- pdata_wage %>%
 
 ## a) Random effect panel regression
 
+## First method
+
+If exogeneity of residuals and individual fixed effects is assumed, we are in the first case of chapter 2 on panel data. Thus, we use the pooled OLS to estimate the model. To do so, we compute the classical OLS regression, then we form clusters to take into account the fact that we have two observations of each individual (at t=1 and t=6). This leads to a modification of the standard errors, so that they are clustered at individual level. 
+
+
+```{r Pooled OLS}
+
+explanatory_variables <- c("factor(origine)", "factor(homme)", "revised_age", "revised_age_squared", "factor(tuu_r)") 
+level_dependent_variable <- "salhoraire"
+
+reg_formula <- reformulate(termlabels= explanatory_variables, response = level_dependent_variable)
+
+pooled_ols <- lm(reg_formula, data = pdata_wage)
+
+coeff_tests <- coeftest(pooled_ols, vcov = vcovCL, cluster=~id_individu)
+
+coeff_tests
+```
+
+
+Analysis : the coefficient of the variable origin 07 (Rest of Africa) is statistically significant at all usual levels. It means that, all things else equal, we predict that an individual with this origin earns 2,63 dollars less than an individual with french origin (level-level model). The same analysis can be done for the origin 09 (Laos, Vietnam, Cambodia). The coefficient of the variable "being a man" is also significant. It means that, compared to being a man, we predict that being a woman implied a decrease of 1,66 dollars of the hourly salary, all things else equal. Similarly for the tuu_r variable, we predict that being in a huge urban unit or in Paris increases the hourly salary by 1,25 and 2,44 dollars respectively, all esle being equal. 
+
+
+## Second method
+
 The goal of panel regression is therefore to obtain a causal interpretation of the effect of explanatory variables on the dependent variable free of all bias due to unobserved ability of individuals (motivation, ...).
 
 Because these unobserved terms are time invariant, the most robust model who assure to have a valid causal interpretation is obtain by doing the usual least squared estimation of coefficient on a model where we substracts the mean over time from the original model.
@@ -462,7 +489,7 @@ Around $\frac{2}{3}$ of the unexplained variance comes from the individual effec
 
 ## b) Origin variable in random effects model
 
-This model can handle time invariant explanatory variables (cf previous question).
+This model can handle time invariant explanatory variables (cf previous question) thanks to the assumption of exogeneity of residuals and individual fixed effects. Thus, we can add the variable "origin" in the regression.
 However, this model does not resolve potential endogeneity issues. On the contrary, it requires the strong assumption of exogeneity of individual effects ($Cov(X_{it}, \alpha_i) = 0$, \forall i, t) to be valid. If unobserved heterogeneity (such as motivation) is correlated with origin or education, the estimator will be biased. In our case, since the Hausman test rejected the null hypothesis, we know that this model fails to control for this endogeneity bias.
 
 
