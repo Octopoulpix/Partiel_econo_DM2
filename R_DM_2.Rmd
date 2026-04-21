@@ -14,13 +14,15 @@ library(forcats)
 library(stargazer)
 library(fixest)
 library(plm)
+library(sandwich)
+library(lmtest)
 ```
 
 
 # Data visualisation
 
 ```{r data importation}
-file = "data/DM_Subject_2_Data.dta"
+file = "DM_Subject_2_Data.dta"
 df <- read_dta(file)
 
 # correction of the salmensuel's computing 
@@ -73,8 +75,7 @@ df_last_wage$revised_age_squared <- df_last_wage$revised_age ^ 2
 
 ## a) Linear regression results
 
-
-For explanatory variables we obviously want to include origin because that is what we want to explain in the regression. To ensure capturing the real prediction of origin on the hourly wage, we need to include other variables that let unchanged the hourly salary all other things being equal. These variables should be related to the hourly wage but not with the origin. We thus selected 4 variables : 
+For explanatory variables we obviously want to include origin because that is what we want to explain in the regression. To ensure capturing the real prediction of origin on the hourly wage, we need to include other variables that let unchanged the hourly salary all other things being equal. These variables should be related to the hourly wage but not with the origin. We thus selected 4 variables :
 
   - "homme", an indicator of being a man (0 if a woman, 1 else)
   - "revised_age" and "revised_age_squared" (as described above)
@@ -376,6 +377,32 @@ pdata_wage <- pdata_wage %>%
 
 ## a) Random effect panel regression
 
+## First method
+
+If exogeneity of residuals and individual fixed effects is assumed, we are in the first case of chapter 2 on panel data. Thus, we use the pooled OLS to estimate the model. To do so, we compute the classical OLS regression, then we form clusters to take into account the fact that we have two observations of each individual (at t=1 and t=6). This leads to a modification of the standard errors, so that they are clustered at individual level. 
+
+
+```{r Pooled OLS}
+
+explanatory_variables <- c("factor(origine)", "factor(homme)", "revised_age", "revised_age_squared", "factor(tuu_r)") 
+level_dependent_variable <- "salhoraire"
+
+reg_formula <- reformulate(termlabels= explanatory_variables, response = level_dependent_variable)
+
+pooled_ols <- lm(reg_formula, data = pdata_wage)
+
+coeff_tests <- coeftest(pooled_ols, vcov = vcovCL, cluster=~id_individu)
+
+coeff_tests
+```
+
+
+Analysis : here, with the assumption of the question, we have causal effects. However, this assumption is too strong in our framework. Thus, for the analysis of the coefficients, we keep the formulation of a "prediction" of the model. 
+The coefficient of the variable origin 07 (Rest of Africa) is statistically significant at all usual levels. It means that, all things else equal, we predict that an individual with this origin earns 2,63 dollars less than an individual with french origin (level-level model). The same analysis can be done for the origin 09 (Laos, Vietnam, Cambodia). The coefficient of the variable "being a man" is also significant. It means that, compared to being a man, we predict that being a woman implied a decrease of 1,66 dollars of the hourly salary, all things else equal. Similarly for the tuu_r variable, we predict that being in a huge urban unit or in Paris increases the hourly salary by 1,25 and 2,44 dollars respectively, all esle being equal. 
+
+
+## Second method
+
 The goal of panel regression is therefore to obtain a causal interpretation of the effect of explanatory variables on the dependent variable free of all bias due to unobserved ability of individuals (motivation, ...).
 
 Because these unobserved terms are time invariant, the most robust model who assure to have a valid causal interpretation is obtain by doing the usual least squared estimation of coefficient on a model where we substracts the mean over time from the original model.
@@ -423,8 +450,6 @@ Where T is the number of period in the panel dataframe
 We first estimate the variance of the random noise by doing a fixed effects regression and then we estimate the one of the unobserved terms thanks to a between regression (difference over the mean of each person).
 
 
-
-
 In this question we assume the exogeneity of the $\alpha_i$ and so we can use the random effects framework presented above. Because of exogeneity we can have a causal integration that includes invariant time explanatory variables in particular origin.
 
 ```{r random effects regression}
@@ -453,7 +478,7 @@ phtest(fe_log_reg, re_log_reg)
 ```
 As we can see, we reject very significatively the null hypothesis of the Hausman test which mean that our random effects model is not consistant. The causal interpretation of coefficients that results from this model is thus impossible because they may incorporate the effect of the unobserved individual effects in it. Therefore the assumption according to which $ Cov(Z_{it}, \alpha_{i}) = 0, \forall i, t$ can statistically consider as being false. 
 
-That being said, because we assume, wrongly, in the question that the $alpha_i$ are exogeneous to the explanatory variables, we still present below the result of the random effects model but these coefficients should not be seen as valid.
+That being said, because we assume, wrongly, in the question that the $alpha_i$ are exogenous to the explanatory variables, we still present below the result of the random effects model but these coefficients should not be seen as valid.
 
 ```{r unvalid results of random effects }
 
@@ -466,13 +491,14 @@ Around $\frac{2}{3}$ of the unexplained variance comes from the individual effec
 
 ## b) Origin variable in random effects model
 
-This model can handle time invariant explanatory variables (cf previous question).
+This model can handle time invariant explanatory variables (cf previous question) thanks to the assumption of exogeneity of residuals and individual fixed effects. Thus, we can add the variable "origin" in the regression.
 However, this model does not resolve potential endogeneity issues. On the contrary, it requires the strong assumption of exogeneity of individual effects ($Cov(X_{it}, \alpha_i) = 0$, \forall i, t) to be valid. If unobserved heterogeneity (such as motivation) is correlated with origin or education, the estimator will be biased. In our case, since the Hausman test rejected the null hypothesis, we know that this model fails to control for this endogeneity bias.
 
 
 ## c) correlated unobserved heterogeneity
 
 In question 3/ a) we saw that a fixed effects model is just a specific case of random effects model where $\theta = 1$. If $\theta = 1$ then all time invariant variables, such as origin, disappear and can't be handle by the model.
+Thus, with the methods covered in class, it is not possible to include the variable "origine" if we allow individual effects to be correlated with the regressors, because it is a time invariant variable. 
 
 
 
@@ -508,6 +534,7 @@ pdata_active <- pdata_active %>%
 # Question 4
 
 Having a binary dependent variable raises issues regarding interpretation of the coefficients if we use a linear estimation. Indeed we can obtain for extreme values of our explanatory variables a predicted value above 1 or under 0 which has no sens considering this is a probability of being employed. But if we are primarily interested in the average marginal effect (the slope of the regression line) rather than individual prediction then an OLS or panel model remains a robust and widely accepted approach in empirical economics. 
+
 
 ## a) random effects model
 
@@ -584,4 +611,184 @@ Finally, age follows an "inverse-U" shape; the probability of working increases 
 
 If we assume correlation between individual effects and the regressors, we will be faced to the same issue than in question 3/. In a fixed effects model all time invariant variables, such as origin, disappear and can't be handle by the model.
 
+
+
+
+# Question 5
+
+For question 5 and 6 we use a common dataframe: 
+
+```{r}
+df_active <- df %>%
+  filter(acteu %in% c(1, 2)) %>%
+  mutate(
+    chomeur = ifelse(acteu == 2, 1, 0),
+    revised_age = age - min(age),
+    revised_age_squared = (age - min(age))^2,
+    homme = as.factor(homme),
+    origine = fct_relevel(as.factor(origine), "01"),
+    tuu_r = fct_relevel(as.factor(tuu_r), "1"),
+    education = fct_relevel(as.factor(education), "1"),
+    higher_ed = ifelse(education == "1", 1, 0) # for question 6)c)
+  )
+```
+
+
+In this question, we want to study the effect of being unemployed at a period t on being unemployed at a period t+1. To be clear, we introduce the following notations: 
+$$
+Y_{it} = \rho Y_{i,t-1} + \beta X_{it} +\alpha_i + \epsilon_{it}
+$$
+where $Y_{it}$ is equal to 1 if employed and 0 otherwise, $X_{it}$ are regressors, $alpha_i$ is the individual effect, $\epsilon_{it}$ is the error term and $\rho$ and $\beta$ are coefficients.
+
+
+## a) First Differences and instrumental variables
+
+To start with, the strict exogeneity means $E[\epsilon_{it} | X_{i1}, ... X_{iT}, \alpha_i] = 0 $ i.e. the shock of today $\epsilon_{it}$ does not depend on the past, the present and the future values of regressors $X$. This hypothesis is violated here because, by construction, $Y_{it}$ is correlated with $\epsilon_{it}$ and since $Y_{it+1}$ depends on $Y_{it}$ and is a regressor, $\epsilon_{it}$ is correlated with a future regressor. \\
+
+The weak exogeneity means $E[\epsilon_{it} | X_{i1}, ... X_{it}, \alpha_i] = 0 $ i.e. the shock of today $\epsilon_{it}$ does not depend on the past and the present values of regressors $X$ but might depend on the future value. This hypothesis is much more realistic because one cannot perfectly anticipate future random shocks when your current status is determined. \\
+To estimate such a model, we cannot simply use the Within estimator. Indeed, it subtracts the mean $\bar{Y_i}$ of the individual i as follows: 
+$$
+Y_{it} - \bar{Y_i} = \rho (Y_{i,t-1} - \bar{Y_i}) + (\epsilon_{it} - \bar{\epsilon_i})
+$$
+
+However, $\bar{Y_i}$ contains $Y_{it}$ which is correlated with $\epsilon_{it}$ and thus $\bar{Y_i}$ is correlated with $\epsilon_{it}$. Likewise, $\bar{\epsilon_i}$ contains $\epsilon_{i;t-1}$ which is correlated with $Y_{i,t-1}$. Therefore, the regressor $(Y_{i,t-1} - \bar{Y_i})$ is correlated with the error term $\epsilon_{it} - \bar{\epsilon_i}$ and the estimator is inconsistent. \\
+Instead, we firstly use the First Differences to eliminate $\alpha_i$ as follows:
+$$
+\Delta Y_{it} = \rho \Delta Y_{i,t-1} + \Delta \epsilon_{it} 
+$$
+
+
+The problem is that $Y_{i, t-1}$ is, by construction, a function of the error term from the previous period $\epsilon_{i,t-1}$ but the new error term $\Delta \epsilon_{it}$ contains $-\epsilon_{i,t-1}$ and thus $y_{i,t-1}$ and $\epsilon_{i,t-1}$ are correlated. Therefore, the regressor $\Delta y_{i,t-1}$ is correlated with the error $\Delta \epsilon_{it}$. So we secondly use the instrumental variables $Y_{i, t-3}, Y_{i, t-4}$ which is definitely related to $y_{i,t-1}$ and under weak exogeneity, $y_{i,t-2}$ was determined before the shocks $\epsilon_{i,t-1}$ and $\epsilon_{it}$ occurred and thus is not correlated with the error term of the differenced equation. \\
+To implement such a method, we use the function pgmm of R. 
+
+
+```{r}
+pdata_dyn <- pdata.frame(df_active, index = c("id_individu", "t"))
+
+# Estimation of the Dynamic Model
+# We use the 'pgmm' function to estimate state dependence
+# Transformation "d" indicates First Differences to remove alpha_i
+# We use lags 3 and 4 as instruments to satisfy the AR(2) test requirements
+
+reg_dyn <- pgmm(
+  formula = chomeur ~ lag(chomeur, 1) + revised_age + revised_age_squared | lag(chomeur, 3:4), 
+  data = pdata_dyn, 
+  effect = "individual", 
+  model = "onestep",       
+  transformation = "d"     
+)
+
+# 3. Summary of results
+summary(reg_dyn)
+```
+
+
+
+## b) Interpretation of the results 
+
+Firstly, we can analyse statistical tests. \\
+Indeed, the Sargan test shows a p-value = 0.88 which means we do not reject $H_0$ (which is the validity of the over-identifying restrictions) so our instruments are exogenous and correctly specified. Then, for the autocorrelation test of order 1 $AR(1)$, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the absence of first-order autocorrelation in the differenced errors) but this result is expected by construction (First-Difference transformation). For the autocorrelation test of order 2 $AR(2)$, the p-value is $0.24866$ which implies that we reject $H_0$ (which is the absence of second-order autocorrelation) so it confirms that our instruments ($y_{i,t-3}$ and $y_{i,t-4}$) are not correlated with the current error term $\Delta \epsilon_{it}$, ensuring the consistency of the estimator. Finally, for the Wald test, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the joint nullity of the coefficients). This confirms that our explanatory variables have a significant global impact on the probability of being unemployed.\\
+
+Secondly, we can focus on economic interpretation of state dependence. \\
+Indeed, the coefficient of \textit{lag(chomeur, 1)} is $0.620$ and is significant. Therefore, all else being equal, having been unemployed in the previous quarter increases the probability of remaining unemployed in the current quarter by 62 percentage points.\\
+
+Finally, we can deal with the impact of control variables (age). \\
+Indeed, their coefficients are not significant. TO DO.....
+
+
+# Question 6
+
+For this question, we take into account the fact that the dependent variable is binary and we consider a probit or logit model for the indicator of being unemployed.
+
+
+## a) Application of Within and First-Difference panel methods
+
+In non-linear models like probit and logit, the probability of being employed is $P(Y_{it}=1 | X_{it}, \alpha_i) = F(X_{it}\beta + \alpha_i)$, where F is a non-linear cumulative distribution function (Normal or Logistic). Therefore, applying linear transformations like Within and First-Difference is not applicable here to eliminate the $\alpha_i$
+
+
+## b) Probit and Logit Model
+
+For this question, we use the function glm of R for each model and we compare the average marginal effects (AME) because we cannot simply compare the coefficients since they are differently scaled.  
+
+```{r}
+#Estimation on Cross-Sectional Data (t=6)
+df_prob_log <- df_active %>% filter(t == 6)
+
+# Probit & Logit Models
+reg_probit <- glm(chomeur ~ origine + homme + revised_age + revised_age_squared + tuu_r, 
+                  family = binomial(link = "probit"), data = df_prob_log)
+reg_logit <- glm(chomeur ~ origine + homme + revised_age + revised_age_squared + tuu_r, 
+                 family = binomial(link = "logit"), data = df_prob_log)
+
+# Average Marginal Effects (Comparison)
+avg_slopes(reg_probit, variables = "origine")
+avg_slopes(reg_logit, variables = "origine")
+```
+Therefore, we notice that the estimated AMEs for the "origin" variable are nearly identical between the probit and the logit model. For example, the effect of the Maghreb (06) is estimated significantly at 10.9 percentage points in the probit and 10.8 in the logit. That tells us that being of Maghreb origin increases the probability of unemployment by approximately 10.8 to 10.9 percentage points compared to the French group, all else being equal. Moreover, the effect of the Rest of the World (10) is estimated significantly at -5.6094 percentage points in the probit and -5.613 in the logit. That means that being of Rest of the World origin decreases the probability of unemployment by approximately 5.6 percentage points compared to the French group, all else being equal. Nevertheless, we should wonder wether these people are simply better on the labor market or they have more education. This is the focus of question (c).
+
+
+## c) Controlling for education level: the Rivers-Vuong method
+
+For this question, we want to estimate the effect of \textit{higher_ed} ($E$) on the probability of being unemployed ($Y$):
+$$
+P(Y=1 | X, W) = \Phi(X\beta + \gamma E + u)
+$$
+
+However, $E$ is endogenous because it is correlated with the error term $u$ (that comes from an omitted variable like innate ability). If we do not fix this, the coefficient $\gamma$ will capture both the value of the degree and the person's inherent talent. 
+Therefore, we will use the Rivers-Vuong method with the probit model (because its method assume that errors follow a Normal Distribution). Because the model is a probit, we cannot use 2SLS. \\
+\begin{itemize}
+  \item {Step 1: The Reduced Form (OLS): } We compute the regression of $E$ on all variables $X$ and our instruments $Z$ as follows: 
+  $$
+  E = X \beta_X + Z \beta_Z + v
+  $$
+And that gives us the residual $\hat{v} = E - \hat{E}$ which intuitively represents the unobserved part of education. 
+  \item {Step 2: The Augmented Probit (Structural Form): } We then run again the probit model but we include the residual $\hat{v}$ as a regressor as follows: 
+  $$
+  P(Y=1| X, W, \hat{v}) = \Phi(X \beta_X + \gamma E + \rho \hat{v} + \epsilon)
+  $$
+  The intuition is that by adding \hat{v}, we can now control the endogeneity. 
+\end{itemize}
+
+
+```{r}
+# 1. Step 1: Reduced Form (OLS)
+# We regress the endogenous variable (higher_ed) on all exogenous 
+# covariates and the instruments (parents' CSP).
+# NB: We use the reference_csp variables created in Question 2 for stability.
+
+df_rv <- df_active %>% 
+  filter(t == 6) %>%
+  mutate(
+    reference_csp_mere = as.factor(substr(csp_mere, 1, 1)),
+    reference_csp_pere = as.factor(substr(csp_pere, 1, 1))
+  )
+
+step1_ols <- lm(higher_ed ~ origine + homme + revised_age + revised_age_squared + 
+                tuu_r + reference_csp_mere + reference_csp_pere, 
+                data = df_rv)
+
+# We extract the residuals (v_hat)
+df_rv$v_hat <- residuals(step1_ols)
+
+# 2. Step 2: Augmented Probit (Structural Form)
+# We include the residuals from Step 1 as an additional regressor 
+# to "control" for the endogeneity of higher_ed.
+
+reg_rv_probit <- glm(chomeur ~ higher_ed + origine + homme + revised_age + 
+                     revised_age_squared + tuu_r + v_hat, 
+                     family = binomial(link = "probit"), 
+                     data = df_rv)
+
+# Display the summary to check the significance of v_hat (Endogeneity Test)
+summary(reg_rv_probit)
+
+# 3. Calculation of Average Marginal Effects (AME)
+# This gives us the consistent causal effect of higher education on unemployment.
+ame_rv <- avg_slopes(reg_rv_probit, variables = "higher_ed")
+print(ame_rv)
+```
+
+We notice that the coefficient of $\hat{v}$ is not statistically significant" at the 5\% level (p-value $\geq 0.05$) so we cannot reject $H_0$ which is $\rho = 0$. In other words, we cannot conclude on the endogeneity of \textit{higher_ed} (because if $\rho=0$, the error of education would not have an impact on being unemployed so education would be exogenous). The power of instrumental variables might be a reason. \\
+Moreover, the coefficient of \textit{higher_ed} is $-0.663$ with a p-value $\leq 0.01$ so it is significant. In short, having a higher degree decreases the probability of being unemployed by 6.629946 percentage points. \\
+Finally, we also observe that the coefficient of the Maghreb origin (06) is again significant and positive. That tells us that even after controlling for education level, being of Maghreb origin increases the probability of being unemployed by 6.07 percentage points. In other words, the penalty of origin 06 is not only due to education but to a specific inequality. 
 
