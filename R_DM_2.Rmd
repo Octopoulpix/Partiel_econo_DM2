@@ -449,7 +449,7 @@ phtest(fe_log_reg, re_log_reg)
 ```
 As we can see, we reject very significatively the null hypothesis of the Hausman test which mean that our random effects model is not consistant. The causal interpretation of coefficients that results from this model is thus impossible because they may incorporate the effect of the unobserved individual effects in it. Therefore the assumption according to which $ Cov(Z_{it}, \alpha_{i}) = 0, \forall i, t$ can statistically consider as being false. 
 
-That being said, because we assume, wrongly, in the question that the $alpha_i$ are exogeneous to the explanatory variables, we still present below the result of the random effects model but these coefficients should not be seen as valid.
+That being said, because we assume, wrongly, in the question that the $alpha_i$ are exogenous to the explanatory variables, we still present below the result of the random effects model but these coefficients should not be seen as valid.
 
 ```{r unvalid results of random effects }
 
@@ -559,7 +559,7 @@ summary(re_binary_reg)
 coeftest(re_binary_reg, vcovHC(re_binary_reg, type = "HC1", cluster = "group"))
 ```
 # Question 5
-For question 5 and 6 we use a common dataframe : 
+For question 5 and 6 we use a common dataframe: 
 ```{r}
 df_active <- df %>%
   filter(acteu %in% c(1, 2)) %>%
@@ -571,11 +571,11 @@ df_active <- df %>%
     origine = fct_relevel(as.factor(origine), "01"),
     tuu_r = fct_relevel(as.factor(tuu_r), "1"),
     education = fct_relevel(as.factor(education), "1"),
-    higher_ed = ifelse(education == "1", 1, 0)
+    higher_ed = ifelse(education == "1", 1, 0) # for question 6)c)
   )
 ```
 
-In this question, we want to study the effect of being unemployed at a period t on on being unemployed at a period t+1. To be clear, we introduce the following notations: 
+In this question, we want to study the effect of being unemployed at a period t on being unemployed at a period t+1. To be clear, we introduce the following notations: 
 $$
 Y_{it} = \rho Y_{i,t-1} + \beta X_{it} +\alpha_i + \epsilon_{it}
 $$
@@ -586,12 +586,12 @@ where $Y_{it}$ is equal to 1 if employed and 0 otherwise, $X_{it}$ are regressor
 To start with, the strict exogeneity means $E[\epsilon_{it} | X_{i1}, ... X_{iT}, \alpha_i] = 0 $ i.e. the shock of today $\epsilon_{it}$ does not depend on the past, the present and the future values of regressors $X$. This hypothesis is violated here because, by construction, $Y_{it}$ is correlated with $\epsilon_{it}$ and since $Y_{it+1}$ depends on $Y_{it}$ and is a regressor, $\epsilon_{it}$ is correlated with a future regressor. \\
 
 The weak exogeneity means $E[\epsilon_{it} | X_{i1}, ... X_{it}, \alpha_i] = 0 $ i.e. the shock of today $\epsilon_{it}$ does not depend on the past and the present values of regressors $X$ but might depend on the future value. This hypothesis is much more realistic because one cannot perfectly anticipate future random shocks when your current status is determined. \\
-To estimate such a model, we cannot simply use the Within estimator. Indeed, it substracts the mean $\bar{Y_i}$ of the individual i as following : 
+To estimate such a model, we cannot simply use the Within estimator. Indeed, it subtracts the mean $\bar{Y_i}$ of the individual i as follows: 
 $$
 Y_{it} - \bar{Y_i} = \rho (Y_{i,t-1} - \bar{Y_i}) + (\epsilon_{it} - \bar{\epsilon_i})
 $$
 However, $\bar{Y_i}$ contains $Y_{it}$ which is correlated with $\epsilon_{it}$ and thus $\bar{Y_i}$ is correlated with $\epsilon_{it}$. Likewise, $\bar{\epsilon_i}$ contains $\epsilon_{i;t-1}$ which is correlated with $Y_{i,t-1}$. Therefore, the regressor $(Y_{i,t-1} - \bar{Y_i})$ is correlated with the error term $\epsilon_{it} - \bar{\epsilon_i}$ and the estimator is inconsistent. \\
-Instead, we firstly use the First Differences to eliminate $\alpha_i$ as following :
+Instead, we firstly use the First Differences to eliminate $\alpha_i$ as follows:
 $$
 \Delta Y_{it} = \rho \Delta Y_{i,t-1} + \Delta \epsilon_{it} 
 $$
@@ -623,7 +623,7 @@ summary(reg_dyn)
 ## b) Interpretation of the results 
 
 Firstly, we can analyse statistical tests. \\
-Indeed, the Sargan test shows a p-value = 0.88 which means we do not reject $H_0$ (which is the validity of the over-identifying restrictions) so our instruments are exogenous and correctly specified. Then, for the autocorrelation test of order 1 $AR(1)$, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the absence of first-order autocorrelation in the differenced errors) but this result is expected by construction (First-Difference transformation). For the autocorrelation test of order 2 $AR(2)$, the p-value is $0.24866$ which emplies that we reject $H_0$ (which is the absence of second-order autocorrelation) so it confirms that our instruments ($y_{i,t-3}$ and $y_{i,t-4}$) are not correlated with the current error term $\Delta \epsilon_{it}$, ensuring the consistency of the estimator. Finally, for the Wald test, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the joint nullity of the coefficients). This confirms that our explanatory variables have a significant global impact on the probability of being unemployed.\\
+Indeed, the Sargan test shows a p-value = 0.88 which means we do not reject $H_0$ (which is the validity of the over-identifying restrictions) so our instruments are exogenous and correctly specified. Then, for the autocorrelation test of order 1 $AR(1)$, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the absence of first-order autocorrelation in the differenced errors) but this result is expected by construction (First-Difference transformation). For the autocorrelation test of order 2 $AR(2)$, the p-value is $0.24866$ which implies that we reject $H_0$ (which is the absence of second-order autocorrelation) so it confirms that our instruments ($y_{i,t-3}$ and $y_{i,t-4}$) are not correlated with the current error term $\Delta \epsilon_{it}$, ensuring the consistency of the estimator. Finally, for the Wald test, the p-value is $\leq 0.01$ so we reject $H_0$ (which is the joint nullity of the coefficients). This confirms that our explanatory variables have a significant global impact on the probability of being unemployed.\\
 
 Secondly, we can focus on economic interpretation of state dependence. \\
 Indeed, the coefficient of \textit{lag(chomeur, 1)} is $0.620$ and is significant. Therefore, all else being equal, having been unemployed in the previous quarter increases the probability of remaining unemployed in the current quarter by 62 percentage points.\\
@@ -638,7 +638,7 @@ For this question, we take into account the fact that the dependent variable is 
 
 ## a) Application of Within and First-Difference panel methods
 
-In non-linear models like probit and logit, the probability of being employed is $P(Y_{it}=1 | X_{it}, \alpha_i) = F(X_{it}\beta + \alpha_i)$, where F is a non-linear cumulative distribution function (Normal or Logistic). Therefore, applying linear transformation like Within and First-Difference is not applicable here to eliminate the $\alpha_i$
+In non-linear models like probit and logit, the probability of being employed is $P(Y_{it}=1 | X_{it}, \alpha_i) = F(X_{it}\beta + \alpha_i)$, where F is a non-linear cumulative distribution function (Normal or Logistic). Therefore, applying linear transformations like Within and First-Difference is not applicable here to eliminate the $\alpha_i$
 
 
 ## b) Probit and Logit Model
@@ -659,18 +659,72 @@ reg_logit <- glm(chomeur ~ origine + homme + revised_age + revised_age_squared +
 avg_slopes(reg_probit, variables = "origine")
 avg_slopes(reg_logit, variables = "origine")
 ```
-Therefore, we notice that the estimated AMEs for the "origin" variable are nearly identical between the probit and the logit model. For example, the effect of the Maghreb (06) is estimated significantly at 10.9 percentage points in the probit and 10.8 in the logit. That tells us that being of Maghreb origin increases the probability of unemployment by approximately 10.8 to 10.9 percentage points compared to the French group, all else being equal. Moreover, the effect of the Rest of the world (10) is estimated significantly at -5.6094 percentage points in the probit and -5.613 in the logit. That means that being of Rest of the world origin decreases the probability of unemployment by approximately 5.6 percentage points compared to the French group, all else being equal. Nevertheless, we should wonder wether these people are simply better on the labor market or they have more education. This is the focus of question (c).
+Therefore, we notice that the estimated AMEs for the "origin" variable are nearly identical between the probit and the logit model. For example, the effect of the Maghreb (06) is estimated significantly at 10.9 percentage points in the probit and 10.8 in the logit. That tells us that being of Maghreb origin increases the probability of unemployment by approximately 10.8 to 10.9 percentage points compared to the French group, all else being equal. Moreover, the effect of the Rest of the World (10) is estimated significantly at -5.6094 percentage points in the probit and -5.613 in the logit. That means that being of Rest of the World origin decreases the probability of unemployment by approximately 5.6 percentage points compared to the French group, all else being equal. Nevertheless, we should wonder wether these people are simply better on the labor market or they have more education. This is the focus of question (c).
 
 
-## c) Controlling for education level : the Rivers-Vuong method
+## c) Controlling for education level: the Rivers-Vuong method
 
-For this question, we want to esimate the effect of \textit{higher_ed} ($E$) on the probability of being unemployed ($Y$):
+For this question, we want to estimate the effect of \textit{higher_ed} ($E$) on the probability of being unemployed ($Y$):
 $$
 P(Y=1 | X, W) = \Phi(X\beta + \gamma E + u)
 $$
 However, $E$ is endogenous because it is correlated with the error term $u$ (that comes from an omitted variable like innate ability). If we do not fix this, the coefficient $\gamma$ will capture both the value of the degree and the person's inherent talent. 
-Therefore, we will use the Rivers-Vuong method with the probit model (because its method assume that errors follows a Normal Law). Because the model is a probit, we cannot use 2SLS. \\
+Therefore, we will use the Rivers-Vuong method with the probit model (because its method assume that errors follow a Normal Distribution). Because the model is a probit, we cannot use 2SLS. \\
 \begin{itemize}
-  \item {Step 1 (The Reduced Form (OLS)) : } We 
+  \item {Step 1: The Reduced Form (OLS): } We compute the regression of $E$ on all variables $X$ and our instruments $Z$ as follows: 
+  $$
+  E = X \beta_X + Z \beta_Z + v
+  $$
+And that gives us the residual $\hat{v} = E - \hat{E}$ which intuitively represents the unobserved part of education. 
+  \item {Step 2: The Augmented Probit (Structural Form): } We then run again the probit model but we include the residual $\hat{v}$ as a regressor as follows: 
+  $$
+  P(Y=1| X, W, \hat{v}) = \Phi(X \beta_X + \gamma E + \rho \hat{v} + \epsilon)
+  $$
+  The intuition is that by adding \hat{v}, we can now control the endogeneity. 
+\end{itemize}
+
+```{r}
+# 1. Step 1: Reduced Form (OLS)
+# We regress the endogenous variable (higher_ed) on all exogenous 
+# covariates and the instruments (parents' CSP).
+# NB: We use the reference_csp variables created in Question 2 for stability.
+
+df_rv <- df_active %>% 
+  filter(t == 6) %>%
+  mutate(
+    reference_csp_mere = as.factor(substr(csp_mere, 1, 1)),
+    reference_csp_pere = as.factor(substr(csp_pere, 1, 1))
+  )
+
+step1_ols <- lm(higher_ed ~ origine + homme + revised_age + revised_age_squared + 
+                tuu_r + reference_csp_mere + reference_csp_pere, 
+                data = df_rv)
+
+# We extract the residuals (v_hat)
+df_rv$v_hat <- residuals(step1_ols)
+
+# 2. Step 2: Augmented Probit (Structural Form)
+# We include the residuals from Step 1 as an additional regressor 
+# to "control" for the endogeneity of higher_ed.
+
+reg_rv_probit <- glm(chomeur ~ higher_ed + origine + homme + revised_age + 
+                     revised_age_squared + tuu_r + v_hat, 
+                     family = binomial(link = "probit"), 
+                     data = df_rv)
+
+# Display the summary to check the significance of v_hat (Endogeneity Test)
+summary(reg_rv_probit)
+
+# 3. Calculation of Average Marginal Effects (AME)
+# This gives us the consistent causal effect of higher education on unemployment.
+ame_rv <- avg_slopes(reg_rv_probit, variables = "higher_ed")
+print(ame_rv)
+```
+We notice that the coefficient of $\hat{v}$ is not statistically significant" at the 5\% level (p-value $\geq 0.05$) so we cannot reject $H_0$ which is $\rho = 0$. In other words, we cannot conclude on the endogeneity of \textit{higher_ed} (because if $\rho=0$, the error of education would not have an impact on being unemployed so education would be exogenous). The power of instrumental variables might be a reason. \\
+Moreover, the coefficient of \textit{higher_ed} is $-0.663$ with a p-value $\leq 0.01$ so it is significant. In short, having a higher degree decreases the probability of being unemployed by 6.629946 percentage points. \\
+Finally, we also observe that the coefficient of the Maghreb origin (06) is again significant and positive. That tells us that even after controlling for education level, being of Maghreb origin increases the probability of being unemployed by 6.07 percentage points. In other words, the penalty of origin 06 is not only due to education but to a specific inequality. 
+
+
+
 
 
