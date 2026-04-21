@@ -396,7 +396,8 @@ coeff_tests
 ```
 
 
-Analysis : the coefficient of the variable origin 07 (Rest of Africa) is statistically significant at all usual levels. It means that, all things else equal, we predict that an individual with this origin earns 2,63 dollars less than an individual with french origin (level-level model). The same analysis can be done for the origin 09 (Laos, Vietnam, Cambodia). The coefficient of the variable "being a man" is also significant. It means that, compared to being a man, we predict that being a woman implied a decrease of 1,66 dollars of the hourly salary, all things else equal. Similarly for the tuu_r variable, we predict that being in a huge urban unit or in Paris increases the hourly salary by 1,25 and 2,44 dollars respectively, all esle being equal. 
+Analysis : here, with the assumption of the question, we have causal effects. However, this assumption is too strong in our framework. Thus, for the analysis of the coefficients, we keep the formulation of a "prediction" of the model. 
+The coefficient of the variable origin 07 (Rest of Africa) is statistically significant at all usual levels. It means that, all things else equal, we predict that an individual with this origin earns 2,63 dollars less than an individual with french origin (level-level model). The same analysis can be done for the origin 09 (Laos, Vietnam, Cambodia). The coefficient of the variable "being a man" is also significant. It means that, compared to being a man, we predict that being a woman implied a decrease of 1,66 dollars of the hourly salary, all things else equal. Similarly for the tuu_r variable, we predict that being in a huge urban unit or in Paris increases the hourly salary by 1,25 and 2,44 dollars respectively, all esle being equal. 
 
 
 ## Second method
@@ -496,6 +497,7 @@ However, this model does not resolve potential endogeneity issues. On the contra
 ## c) correlated unobserved heterogeneity
 
 In question 3/ a) we saw that a fixed effects model is just a specific case of random effects model where $\theta = 1$. If $\theta = 1$ then all time invariant variables, such as origin, disappear and can't be handle by the model.
+Thus, with the methods covered in class, it is not possible to include the variable "origine" if we allow individual effects to be correlated with the regressors, because it is a time invariant variable. 
 
 
 
