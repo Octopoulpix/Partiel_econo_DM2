@@ -6,7 +6,6 @@ output:
 ---
 
 Library importation
-regarder stargazer si le temps
 
 ```{r necessary library}
 library(haven)
@@ -40,7 +39,7 @@ In this part, we looked at employed people, thus we only keep observations in df
 ```{r filtering data by hourly wage}
 
 df_wage <- df %>% 
-  filter(!is.na(salhoraire) & acteu == 1)
+  filter(acteu == 1 & !is.na(salhoraire))
 
 ```
 
@@ -76,15 +75,14 @@ df_last_wage$revised_age_squared <- df_last_wage$revised_age ^ 2
 
 ## a) Linear regression results
 
-
-For explanatory variables we obviously want to include origine because that's what explanatory us in the regression. To ensure capturing the real prediction of origine on the hourly wage, we need to include other variables that let unchanged the hourly salary all other things being equal. These variables should be related to the hourly wage but not with the origine. We thus selected 4 variables : 
+For explanatory variables we obviously want to include origin because that is what we want to explain in the regression. To ensure capturing the real prediction of origin on the hourly wage, we need to include other variables that let unchanged the hourly salary all other things being equal. These variables should be related to the hourly wage but not with the origin. We thus selected 4 variables :
 
   - "homme", an indicator of being a man (0 if a woman, 1 else)
   - "revised_age" and "revised_age_squared" (as described above)
 
-These first two variables can quite likely be decorrelated of the origine of people
+These first two variables can quite likely be uncorrelated of the origin of people
 
-Lastly we hypothesize that the size of the urban area where people lived are not correlated to there origin which could be debate because rural area are often inhabted by french origin persons.
+Lastly we hypothesize that the size of the urban area where people lived are not correlated to there origin which could be debated because rural area are often inhabited by french origin persons.
 
 ```{r explanatory variables}
 
@@ -127,11 +125,11 @@ summary(level_reg)
 
 ```
 
-As said before, factored variables can be interpreted relatively to the comparator modality. Thus the regression seems to work because we found that the more you lived in a big city (higher factor tuu_r) the more the model predicts you a higher salary (+ 2 euros if you live in Paris conurbation). Factor(homme) being positive makes the model predicts a higher hourly salary if you are a man than a woman (+ 2 euros). Both of these variables seems to be relevant as the p_value suggest it (statistically significant at the 0.001% level).
+As said before, factor variables can be interpreted relatively to the comparator modality. Thus the regression seems to work because we found that the more you lived in a big city (higher factor tuu_r) the more the model predicts you a higher salary (+ 2 euros if you live in Paris conurbation). Factor(homme) being positive makes the model predicts a higher hourly salary if you are a man than a woman (+ 2 euros). Both of these variables seems to be relevant as the p_value suggest it (statistically significant at the 0.001% level).
 
 Even if revised_age and revised_age squared are not statistically significant, them being positive fits our intuition. 
 
-AS for the origin variable, we also have qualitatively quite good coefficients. Indeed almost every origin leads people to have a smaller hourly wage than a person having french origin at the exception of Northern Europe and Middle East origin. One may easily argue that the former one is due to a higher confindence granted to them than french origin workers. However, very few of them are statistically significant. The two main one are people with North African origin (06) or other African origin (07), perhaps mainly due to a larger diaspora of people of these origins in France. Both of them are negative, according to the model a person with African orgin receives all other things being equal about -2 euros from their hourly salary than french origin people. It is sadly what we could have anticipated, may be due to systemic racism in our society.
+AS for the origin variable, we also have qualitatively quite good coefficients. Indeed almost every origin leads people to have a smaller hourly wage than a person having french origin at the exception of Northern Europe and Middle East origin. One may easily argue that the former one is due to a higher confidence granted to them than french origin workers. However, very few of them are statistically significant. The two main one are people with North African origin (06) or other African origin (07), perhaps mainly due to a larger diaspora of people of these origins in France. Both of them are negative, according to the model a person with African orgin receives all other things being equal about -2 euros from their hourly salary than french origin people. It is sadly what we could have anticipated, because it is largely know that it is harder for people with these origins to enter the labor market.
 
 
 
@@ -146,12 +144,15 @@ log_reg <- lm(reg_formula, data = df_last_wage)
 summary(log_reg)
 
 ```
-As expected we obtain the same result than in the level regression, presented in a different form but with a much higher statistically significativity (especially for revised_age variable).
+As expected we obtain the same results than in the level regression, presented in a different form but with a much higher statistically significativity (especially for revised_age variable).
+
+Reading key : for individuals with a northern african origin, all else being equal, the model predicts that their houlry wage is about 10% lower than the one of french origin individuals.
+
 
 ## c) Diffusion channels of inequalities due to the origin of people
 
 To answer this question we use an iterative method. We first compute a simple regression of hourly salary on origin, then we do for each new potential channel variable a new regression where we add this variable to the vector of explanatory variables. 
-By comparing the coefficient of origin in each of these regressions we are able to highlight some of the channels.
+By comparing the coefficients of origin in each of these regressions we are able to highlight some of the channels.
 
 ```{r regression over origin}
 
@@ -196,11 +197,11 @@ stargazer(log_reg_origin, log_reg_education, log_reg_contract, log_reg_health,
 ```
 
 
-As we can see, adding education to the regression highly modify origin's coefficient. For instance, if we stick to the most significant coefficient which correspond to people with African origin (expect northern Africa) - modality 7 - we see that it increases following the addition of education as an explanatory variable. Without, the model predicts that these former people receive an hourly wage 17 % smaller than someone with french origin, whereas it predicts only 15 % smaller if we add education. Thus education explains a part of wage inequalities which means that the wage differences is partially ($(0.178 - 0.157) / 0.178 \approx 11.8\%$) conveyed through the education channel. The origin coefficient still remains significant which shows that other diffusion channels exists.
+As we can see, adding education to the regression highly modify origin's coefficient. For instance, if we stick to the most significant coefficient which correspond to people with African origin (expect northern Africa) - modality 7 - we see that it increases following the addition of education as an explanatory variable. Without, the model predicts that these former people receive an hourly wage 17 % smaller than someone with french origin, whereas it predicts only 15 % smaller if we add education. Thus education explains a part of wage inequalities which means that the wage differences is partially ($( 0.178 - 0.157) / 0.178 \approx 11.8\%$) conveyed through the education channel. The origin coefficient still remains significant which shows that other diffusion channels exists.
 
-When the coefficient decreases following the insertion of education, which is only the case for factor 5 - Eastern european , this shows that the people with this origin are not paid enough for their level of education. Indeed, if the coefficient is initially close to 0 in the first regression the model predicts for these people the same hourly wage than for the reference group. By adding the education, we see that the model predicts a smaller wage all else equals but education. This mean that the model tend to predict that this person have in general a higher education level than what they are paid for.
+When the coefficient decreases following the insertion of education, which is the case for instance factor 3 - Northern european , this make us think that the people with this origin are not paid enough for their level of education. Indeed, if the coefficient is initially close to 0 in the first regression the model predicts for these people the same hourly wage than for the reference group. By adding the education, we see that the model predicts a smaller wage inequality all else equals. This mean that the simple regression model tend to predict that these person have in general a higher education level than what they are paid for.
 
-Similarly, adding the type of contract increase all orgin's coefficient (except for factor 9 corresponding to Laotian, Cambodian, Vietnamese). The type of contract explains about $(refaire le calcule pour facteur 3 11.8\%$ of discrimination in hourly wage.
+Similarly, adding the type of contract increase all origin's coefficient (except for factor 9 corresponding to Laotian, Cambodian, Vietnamese). The type of contract explains about $(0.157 - 0.114) / 0.178 \approx 24 \%$ of discrimination in hourly wage.
 
 Finally, adding personal assessment of an individual's health doesn't modify the coefficient. Therefore origin of people doesn't seem to affect the hourly wage through the health of people. Since health status was not correlated with origin in our sample, it cannot explain why wages differ by origin.
 
@@ -208,7 +209,7 @@ Finally, adding personal assessment of an individual's health doesn't modify the
 
 ##  a) Education : a bad control variable
 
-Our goal is here to obtain a causal regression all else equals to interpret wage differences as inequalities. But we face usual endogeneic problems in econometric. Endogeneity appears when E[Xepsilon] =/ 0, that is to say when explanatory variables are correlated with the residuals. This is always the case because it is obviously impossible to explain the effect of a specific variable link to the real world with a finite number of explanatory variables, but we can try to have an expectation near 0. 
+Our goal is here to obtain a causal regression all else equals to interpret wage differences as inequalities. But we face usual endogeneic problems in econometric. Endogeneity appears when $\mathbb{E}[X\epsilon] \neq 0 $, that is to say when explanatory variables are correlated with the residuals. This is always the case because it is obviously impossible to explain the effect of a specific variable link to the real world with a finite number of explanatory variables, but we can try to have an expectation near 0. 
 
 This endogeneity issue is not a problem as long as we only try to predict a result according to a regression model. But here we want to have a causal interpretation of coefficients of our regressions. To do that we need to erase all bias due to omitted variables.
 
@@ -221,9 +222,9 @@ To have the total effect of origin over hourly wage differences one can look at 
 
 ## b) Choice of instrumental variables
 
-The purpose of instrumental variables is to isolate the part of the education level that is independent of unobservable factors, such as innate talent or motivation. By doing so, we ensure that the estimated coefficient represents the true causal effect of education on wages, rather than reflecting these omitted variables. To do that, an instrumental variable should be :
-  - relevant = be correlated to the explanatory variable (cov(Z,X) /= 0)
-  - exogenous = only influence the dependent variable through the explanatory variable (corr(Z,epsilon) = 0)
+The purpose of instrumental variables is to isolate the part of the education level that is independent of unobservable factors, such as innate talent or motivation. By doing so, we ensure that the estimated coefficient represents the true causal effect of education on wages, rather than reflecting these omitted variables. To do that, an instrumental variable Z should be :
+  - relevant = be correlated to the endogenous explanatory variable $Cov(X,Z) \neq 0$
+  - exogenous = only influence the dependent variable through the explanatory variable $Corr(Z,\epsilon) = 0$
   
 Besides to compute the model, instrumental variables need to respect an order condition. The number of instrumental variables (m) should be equal or superior to the number of explanatory endogenous variables (k). Here we assume that only education is endogenous, thus we need 1 or more instrumental variable. Having more than k instrumental variables allow to use a Sargan test to test the validity of our model (over identified model).
 
@@ -534,6 +535,7 @@ pdata_active <- pdata_active %>%
 
 Having a binary dependent variable raises issues regarding interpretation of the coefficients if we use a linear estimation. Indeed we can obtain for extreme values of our explanatory variables a predicted value above 1 or under 0 which has no sens considering this is a probability of being employed. But if we are primarily interested in the average marginal effect (the slope of the regression line) rather than individual prediction then an OLS or panel model remains a robust and widely accepted approach in empirical economics. 
 
+
 ## a) random effects model
 
 
@@ -541,7 +543,6 @@ Having a binary dependent variable raises issues regarding interpretation of the
 
 binary_dependent_variable <- "being_employed"
 explanatory_variables <- c("factor(origine)", "factor(homme)", "revised_age", "revised_age_squared", "factor(tuu_r)", "factor(education)")
-
 
 
 pdata_active$revised_age <- pdata_active$age - min(pdata_active$age)
@@ -572,23 +573,51 @@ pdata_active <- pdata_active %>%
 
 In this question we use the exact same processus than in question 3/
 
-```{r random effect }
+```{r Hausman test}
 
-re_binary_formula <- reformulate(termlabels = explanatory_variables, response = binary_dependent_variable)
-print(re_binary_formula)
+# formula fitting R required function forms
+binary_formula <- reformulate(termlabels = explanatory_variables, response = binary_dependent_variable)
+print(binary_formula)
 
-re_binary_reg <- plm(formula = re_binary_formula, data =pdata_active, model = "random")
+# fixed and random effects regression
+fe_binary_reg <- plm(formula = binary_formula, data = pdata_active, model = "within")
+re_binary_reg <- plm(formula = binary_formula, data = pdata_active, model = "random")
+
+# Hausman test
+phtest(fe_binary_reg, re_binary_reg)
+
 
 ```
+As one might expect, the exogeneity hypothesis is once again (as in question 3/) a very strong assumption on the individual fixed effects. But for the purpose of the question, we still stick to this assumption.
 
-```{r}
+```{r random effects regression}
+
 summary(re_binary_reg)
+
 ```
-```{r}
-coeftest(re_binary_reg, vcovHC(re_binary_reg, type = "HC1", cluster = "group"))
-```
+
+As for the other regressions, the results show a significant negative impact for individuals of African origin. Specifically, North African origin people see their probability of employment decrease by 11.5 percentage points, while those in category 07 see a decrease of 7.9 percentage points compared to individual with french origin. 
+
+Regarding education, the model confirms that lower-quality degrees (higher factor values) lead to worse employment outcomes. For instance, individuals with the lowest degree level (factor 07 : no qualification or primary school certificate) are 11.7% less likely to be employed than the most educated group.
+
+Geography also plays a key role. indeed, the model shows an interesting result : living in larger urban areas (higher tuu_r factors) actually reduces the probability of being employed. All coefficients for urban zones are negative compared to the rural reference group (the smallest urban unit size category of the dwelling).
+
+For example, living in a mid-sized city (factors 3 and 4) decreases the chance of employment by about 4.5 to 5 percentage points. This might seem strange, but it can be explained by the nature of the labor market. In the countryside, many people are self-employed, farmers, or artisans, which keeps the official unemployment rate lower. In contrast, large cities often face more structural unemployment and much higher competition for every available job. Interestingly, the effect is slightly less negative in the largest cities (factor 5), likely because they offer a wider variety of jobs that partially offsets the urban job-seeking challenges.
+
+Finally, age follows an "inverse-U" shape; the probability of working increases as people get older but starts to decline after a certain point (due to the negative coefficient of age squared). Overall, although the R-squared is low, the high Chi-square statistic and significant p-values prove that these factors are very important in explaining employment inequalities.
+
+
+## b) correlation issue
+
+If we assume correlation between individual effects and the regressors, we will be faced to the same issue than in question 3/. In a fixed effects model all time invariant variables, such as origin, disappear and can't be handle by the model.
+
+
+
+
 # Question 5
+
 For question 5 and 6 we use a common dataframe: 
+
 ```{r}
 df_active <- df %>%
   filter(acteu %in% c(1, 2)) %>%
@@ -604,11 +633,13 @@ df_active <- df %>%
   )
 ```
 
+
 In this question, we want to study the effect of being unemployed at a period t on being unemployed at a period t+1. To be clear, we introduce the following notations: 
 $$
 Y_{it} = \rho Y_{i,t-1} + \beta X_{it} +\alpha_i + \epsilon_{it}
 $$
 where $Y_{it}$ is equal to 1 if employed and 0 otherwise, $X_{it}$ are regressors, $alpha_i$ is the individual effect, $\epsilon_{it}$ is the error term and $\rho$ and $\beta$ are coefficients.
+
 
 ## a) First Differences and instrumental variables
 
@@ -619,14 +650,16 @@ To estimate such a model, we cannot simply use the Within estimator. Indeed, it 
 $$
 Y_{it} - \bar{Y_i} = \rho (Y_{i,t-1} - \bar{Y_i}) + (\epsilon_{it} - \bar{\epsilon_i})
 $$
+
 However, $\bar{Y_i}$ contains $Y_{it}$ which is correlated with $\epsilon_{it}$ and thus $\bar{Y_i}$ is correlated with $\epsilon_{it}$. Likewise, $\bar{\epsilon_i}$ contains $\epsilon_{i;t-1}$ which is correlated with $Y_{i,t-1}$. Therefore, the regressor $(Y_{i,t-1} - \bar{Y_i})$ is correlated with the error term $\epsilon_{it} - \bar{\epsilon_i}$ and the estimator is inconsistent. \\
 Instead, we firstly use the First Differences to eliminate $\alpha_i$ as follows:
 $$
 \Delta Y_{it} = \rho \Delta Y_{i,t-1} + \Delta \epsilon_{it} 
 $$
+
+
 The problem is that $Y_{i, t-1}$ is, by construction, a function of the error term from the previous period $\epsilon_{i,t-1}$ but the new error term $\Delta \epsilon_{it}$ contains $-\epsilon_{i,t-1}$ and thus $y_{i,t-1}$ and $\epsilon_{i,t-1}$ are correlated. Therefore, the regressor $\Delta y_{i,t-1}$ is correlated with the error $\Delta \epsilon_{it}$. So we secondly use the instrumental variables $Y_{i, t-3}, Y_{i, t-4}$ which is definitely related to $y_{i,t-1}$ and under weak exogeneity, $y_{i,t-2}$ was determined before the shocks $\epsilon_{i,t-1}$ and $\epsilon_{it}$ occurred and thus is not correlated with the error term of the differenced equation. \\
 To implement such a method, we use the function pgmm of R. 
-
 
 
 ```{r}
@@ -649,6 +682,8 @@ reg_dyn <- pgmm(
 summary(reg_dyn)
 ```
 
+
+
 ## b) Interpretation of the results 
 
 Firstly, we can analyse statistical tests. \\
@@ -664,6 +699,7 @@ Indeed, their coefficients are not significant. TO DO.....
 # Question 6
 
 For this question, we take into account the fact that the dependent variable is binary and we consider a probit or logit model for the indicator of being unemployed.
+
 
 ## a) Application of Within and First-Difference panel methods
 
@@ -697,6 +733,7 @@ For this question, we want to estimate the effect of \textit{higher_ed} ($E$) on
 $$
 P(Y=1 | X, W) = \Phi(X\beta + \gamma E + u)
 $$
+
 However, $E$ is endogenous because it is correlated with the error term $u$ (that comes from an omitted variable like innate ability). If we do not fix this, the coefficient $\gamma$ will capture both the value of the degree and the person's inherent talent. 
 Therefore, we will use the Rivers-Vuong method with the probit model (because its method assume that errors follow a Normal Distribution). Because the model is a probit, we cannot use 2SLS. \\
 \begin{itemize}
@@ -711,6 +748,7 @@ And that gives us the residual $\hat{v} = E - \hat{E}$ which intuitively represe
   $$
   The intuition is that by adding \hat{v}, we can now control the endogeneity. 
 \end{itemize}
+
 
 ```{r}
 # 1. Step 1: Reduced Form (OLS)
@@ -749,11 +787,8 @@ summary(reg_rv_probit)
 ame_rv <- avg_slopes(reg_rv_probit, variables = "higher_ed")
 print(ame_rv)
 ```
+
 We notice that the coefficient of $\hat{v}$ is not statistically significant" at the 5\% level (p-value $\geq 0.05$) so we cannot reject $H_0$ which is $\rho = 0$. In other words, we cannot conclude on the endogeneity of \textit{higher_ed} (because if $\rho=0$, the error of education would not have an impact on being unemployed so education would be exogenous). The power of instrumental variables might be a reason. \\
 Moreover, the coefficient of \textit{higher_ed} is $-0.663$ with a p-value $\leq 0.01$ so it is significant. In short, having a higher degree decreases the probability of being unemployed by 6.629946 percentage points. \\
 Finally, we also observe that the coefficient of the Maghreb origin (06) is again significant and positive. That tells us that even after controlling for education level, being of Maghreb origin increases the probability of being unemployed by 6.07 percentage points. In other words, the penalty of origin 06 is not only due to education but to a specific inequality. 
-
-
-
-
 

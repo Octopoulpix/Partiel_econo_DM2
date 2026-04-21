@@ -353,7 +353,7 @@ display: none;
 </div>
 
 
-<p>Library importation</p>
+<p>Library importation regarder stargazer si le temps</p>
 <pre class="r"><code>library(haven)
 library(dplyr)</code></pre>
 <pre><code>## 
@@ -364,10 +364,26 @@ library(dplyr)</code></pre>
 <pre><code>## Les objets suivants sont masqués depuis &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
+<pre class="r"><code>library(forcats)
+library(stargazer)</code></pre>
+<pre><code>## 
+## Please cite as:</code></pre>
+<pre><code>##  Hlavac, Marek (2022). stargazer: Well-Formatted Regression and Summary Statistics Tables.</code></pre>
+<pre><code>##  R package version 5.2.3. https://CRAN.R-project.org/package=stargazer</code></pre>
+<pre class="r"><code>library(fixest)
+library(plm)</code></pre>
+<pre><code>## 
+## Attachement du package : &#39;plm&#39;</code></pre>
+<pre><code>## Les objets suivants sont masqués depuis &#39;package:dplyr&#39;:
+## 
+##     between, lag, lead</code></pre>
 <div id="data-visualisation" class="section level1">
 <h1>Data visualisation</h1>
 <pre class="r"><code>file = &quot;data/DM_Subject_2_Data.dta&quot;
 df &lt;- read_dta(file)
+
+# correction of the salmensuel&#39;s computing 
+df$salhoraire &lt;- df$salmensuel / (df$heuretra * 4.33)
 
 head(df)</code></pre>
 <pre><code>## # A tibble: 6 × 60
@@ -387,15 +403,948 @@ head(df)</code></pre>
 ## #   halochomage &lt;chr&gt;, informel &lt;dbl&gt;, csp_actif_detaille &lt;chr&gt;,
 ## #   csp_actif_int &lt;chr&gt;, csp_actif &lt;chr&gt;, encadre &lt;dbl&gt;, plract &lt;dbl&gt;, …</code></pre>
 </div>
+<div id="part-1" class="section level1">
+<h1>Part 1</h1>
+<p>In this part, we looked at employed people, thus we only keep
+observations in df with a wage associated</p>
+<pre class="r"><code>df_wage &lt;- df %&gt;% 
+  filter(!is.na(salhoraire))</code></pre>
+<p>8196 observations over 60000 have a mensual salary indicated. Indeed
+the wage is only available in the first and last quarter of the
+dataframe for employed individuals.</p>
+</div>
 <div id="question-1" class="section level1">
 <h1>Question 1</h1>
-<pre class="r"><code># filtering the dataframe to keep only observation with wage
-df_wage &lt;- df %&gt;% 
-  filter(!is.na(salmensuel))
+<p>We ignore the panel dimension in this question by keeping only the
+last observed quarter for employed individuals.</p>
+<pre class="r"><code>df_last_wage &lt;- df_wage %&gt;% 
+  filter(t == 6)</code></pre>
+<p>Creation of new explanatory variables used in our linear regression.
+Revised_age is a variable where we rescale age in order to have a
+quadratic relationship between the hourly salary and the age of the
+worker.</p>
+<pre class="r"><code>df_last_wage$revised_age &lt;- df_last_wage$age - min(df_last_wage$age)
 
-print(nrow(df_wage))</code></pre>
-<pre><code>## [1] 8305</code></pre>
-<p>8305 personnes</p>
+# capturing the quadratic relation
+df_last_wage$revised_age_squared &lt;- df_last_wage$revised_age ^ 2</code></pre>
+<div id="a-linear-regression-results" class="section level2">
+<h2>a) Linear regression results</h2>
+<p>For explanatory variables we obviously want to include origine
+because that’s what explanatory us in the regression. To ensure
+capturing the real prediction of origine on the hourly wage, we need to
+include other variables that let unchanged the hourly salary all other
+things being equal. These variables should be related to the hourly wage
+but not with the origine. We thus selected 4 variables :</p>
+<ul>
+<li>“homme”, an indicator of being a man (0 if a woman, 1 else)</li>
+<li>“revised_age” and “revised_age_squared” (as described above)</li>
+</ul>
+<p>These first two variables can quite likely be decorrelated of the
+origine of people</p>
+<p>Lastly we hypothesize that the size of the urban area where people
+lived are not correlated to there origin which could be debate because
+rural area are often inhabted by french origin persons.</p>
+<pre class="r"><code># as_factor used for nominal variables
+explanatory_variables &lt;- c(&quot;factor(origine)&quot;, &quot;factor(homme)&quot;, &quot;revised_age&quot;, &quot;revised_age_squared&quot;, &quot;factor(tuu_r)&quot;) 
+
+# as_factor takes as an entry a variable under character or factor type
+df_last_wage$homme &lt;- as.character(df_last_wage$homme)
+
+# as_factor interpret coefficients relatively to the first level in alphebitc order. To have an easier interpretation of the coefficient we will ensure that the compared modality will be France (01) for origin, Man (1) for homme and rural municipality for tuu_r (1)
+
+df_last_wage &lt;- df_last_wage %&gt;% 
+  mutate(
+    # 01 corresponds to a french origin
+    origine = fct_relevel(origine, &quot;01&quot;),
+    
+    # 1 corresponds to being a man
+    homme = fct_relevel(homme, &quot;1&quot;),
+    
+    # 1 corresponds to rural municipality
+    tuu_r  = fct_relevel(tuu_r, &quot;1&quot;)
+  )</code></pre>
+</div>
+<div id="b-interpretation-of-orgines-coefficients" class="section level2">
+<h2>b) Interpretation of orgine’s coefficients</h2>
+<pre class="r"><code>level_dependent_variable &lt;- &quot;salhoraire&quot;
+
+# reformulate is use to transform vector into official R formula
+# reformulate(c(&quot;var1&quot;, &quot;var2&quot;), response = &quot;target&quot;) returns
+# target ~ var1 + var2
+reg_formula &lt;- reformulate(termlabels= explanatory_variables, response = level_dependent_variable)
+
+level_reg &lt;- lm(reg_formula, data = df_last_wage)
+
+summary(level_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = reg_formula, data = df_last_wage)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -11.974  -3.058  -1.006   1.823 118.256 
+## 
+## Coefficients:
+##                       Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)          9.944e+00  5.687e-01  17.485  &lt; 2e-16 ***
+## factor(origine)03    1.421e+00  7.293e-01   1.948 0.051516 .  
+## factor(origine)04   -2.338e-01  3.779e-01  -0.619 0.536176    
+## factor(origine)05   -8.138e-01  7.926e-01  -1.027 0.304628    
+## factor(origine)06   -1.550e+00  5.191e-01  -2.986 0.002840 ** 
+## factor(origine)07   -2.544e+00  7.284e-01  -3.493 0.000484 ***
+## factor(origine)08    1.174e+00  1.022e+00   1.148 0.251033    
+## factor(origine)09   -2.160e+00  1.352e+00  -1.598 0.110221    
+## factor(origine)10    1.920e-01  1.116e+00   0.172 0.863432    
+## factor(origine)99   -1.841e+00  6.451e-01  -2.855 0.004330 ** 
+## factor(homme)0      -1.604e+00  1.753e-01  -9.150  &lt; 2e-16 ***
+## revised_age          8.430e-02  4.066e-02   2.073 0.038203 *  
+## revised_age_squared  8.102e-06  7.175e-04   0.011 0.990992    
+## factor(tuu_r)2      -3.233e-01  2.594e-01  -1.246 0.212801    
+## factor(tuu_r)3       9.232e-02  2.664e-01   0.347 0.728910    
+## factor(tuu_r)4       8.862e-01  2.437e-01   3.636 0.000280 ***
+## factor(tuu_r)5       2.324e+00  3.173e-01   7.324  2.9e-13 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 5.551 on 4029 degrees of freedom
+## Multiple R-squared:  0.06421,    Adjusted R-squared:  0.0605 
+## F-statistic: 17.28 on 16 and 4029 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>As said before, factored variables can be interpreted relatively to
+the comparator modality. Thus the regression seems to work because we
+found that the more you lived in a big city (higher factor tuu_r) the
+more the model predicts you a higher salary (+ 2 euros if you live in
+Paris conurbation). Factor(homme) being positive makes the model
+predicts a higher hourly salary if you are a man than a woman (+ 2
+euros). Both of these variables seems to be relevant as the p_value
+suggest it (statistically significant at the 0.001% level).</p>
+<p>Even if revised_age and revised_age squared are not statistically
+significant, them being positive fits our intuition.</p>
+<p>AS for the origin variable, we also have qualitatively quite good
+coefficients. Indeed almost every origin leads people to have a smaller
+hourly wage than a person having french origin at the exception of
+Northern Europe and Middle East origin. One may easily argue that the
+former one is due to a higher confindence granted to them than french
+origin workers. However, very few of them are statistically significant.
+The two main one are people with North African origin (06) or other
+African origin (07), perhaps mainly due to a larger diaspora of people
+of these origins in France. Both of them are negative, according to the
+model a person with African orgin receives all other things being equal
+about -2 euros from their hourly salary than french origin people. It is
+sadly what we could have anticipated, may be due to systemic racism in
+our society.</p>
+<pre class="r"><code>log_dependent_variable &lt;- &quot;log(salhoraire)&quot;
+
+reg_formula &lt;- reformulate(termlabels= explanatory_variables, response = log_dependent_variable)
+
+log_reg &lt;- lm(reg_formula, data = df_last_wage)
+
+summary(log_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = reg_formula, data = df_last_wage)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.99785 -0.22383 -0.01852  0.22043  2.66686 
+## 
+## Coefficients:
+##                       Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)          2.103e+00  3.923e-02  53.615  &lt; 2e-16 ***
+## factor(origine)03    1.209e-01  5.030e-02   2.404 0.016267 *  
+## factor(origine)04   -2.825e-02  2.607e-02  -1.084 0.278503    
+## factor(origine)05   -5.642e-02  5.467e-02  -1.032 0.302161    
+## factor(origine)06   -1.028e-01  3.581e-02  -2.871 0.004116 ** 
+## factor(origine)07   -2.208e-01  5.024e-02  -4.395 1.14e-05 ***
+## factor(origine)08    5.079e-02  7.052e-02   0.720 0.471474    
+## factor(origine)09   -1.657e-01  9.325e-02  -1.777 0.075688 .  
+## factor(origine)10   -2.913e-02  7.699e-02  -0.378 0.705154    
+## factor(origine)99   -1.547e-01  4.449e-02  -3.476 0.000514 ***
+## factor(homme)0      -1.358e-01  1.209e-02 -11.226  &lt; 2e-16 ***
+## revised_age          2.021e-02  2.804e-03   7.205 6.89e-13 ***
+## revised_age_squared -2.618e-04  4.949e-05  -5.289 1.29e-07 ***
+## factor(tuu_r)2      -3.299e-02  1.789e-02  -1.843 0.065333 .  
+## factor(tuu_r)3       1.523e-02  1.837e-02   0.829 0.407179    
+## factor(tuu_r)4       5.936e-02  1.681e-02   3.531 0.000418 ***
+## factor(tuu_r)5       1.696e-01  2.189e-02   7.749 1.16e-14 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3829 on 4029 degrees of freedom
+## Multiple R-squared:  0.082,  Adjusted R-squared:  0.07835 
+## F-statistic: 22.49 on 16 and 4029 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>As expected we obtain the same result than in the level regression,
+presented in a different form but with a much higher statistically
+significativity (especially for revised_age variable).</p>
+</div>
+<div id="c-diffusion-channels-of-inequalities-due-to-the-origin-of-people" class="section level2">
+<h2>c) Diffusion channels of inequalities due to the origin of
+people</h2>
+<p>To answer this question we use an iterative method. We first compute
+a simple regression of hourly salary on origin, then we do for each new
+potential channel variable a new regression where we add this variable
+to the vector of explanatory variables. By comparing the coefficient of
+origin in each of these regressions we are able to highlight some of the
+channels.</p>
+<pre class="r"><code>log_reg_origin &lt;- lm(log(salhoraire) ~ factor(origine), data= df_last_wage)
+
+summary(log_reg_origin)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(salhoraire) ~ factor(origine), data = df_last_wage)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -2.02443 -0.24224 -0.02503  0.22409  2.48671 
+## 
+## Coefficients:
+##                    Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)        2.391443   0.006847 349.254  &lt; 2e-16 ***
+## factor(origine)03  0.119931   0.052216   2.297 0.021679 *  
+## factor(origine)04 -0.003952   0.026880  -0.147 0.883131    
+## factor(origine)05 -0.023341   0.056647  -0.412 0.680328    
+## factor(origine)06 -0.041204   0.036644  -1.124 0.260885    
+## factor(origine)07 -0.177505   0.051368  -3.456 0.000555 ***
+## factor(origine)08  0.094808   0.072916   1.300 0.193595    
+## factor(origine)09 -0.183676   0.096678  -1.900 0.057522 .  
+## factor(origine)10 -0.009655   0.079817  -0.121 0.903725    
+## factor(origine)99 -0.140061   0.046121  -3.037 0.002406 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3976 on 4036 degrees of freedom
+## Multiple R-squared:  0.008122,   Adjusted R-squared:  0.00591 
+## F-statistic: 3.672 on 9 and 4036 DF,  p-value: 0.0001366</code></pre>
+<pre class="r"><code>log_reg_education &lt;- lm(log(salhoraire) ~ factor(origine) + factor(education), data= df_last_wage)
+
+summary(log_reg_education)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(salhoraire) ~ factor(origine) + factor(education), 
+##     data = df_last_wage)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.91894 -0.20404 -0.00699  0.20750  2.65716 
+## 
+## Coefficients:
+##                     Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)         2.635770   0.013393 196.805  &lt; 2e-16 ***
+## factor(origine)03   0.080678   0.048411   1.667 0.095685 .  
+## factor(origine)04   0.044639   0.025011   1.785 0.074375 .  
+## factor(origine)05  -0.059490   0.052489  -1.133 0.257118    
+## factor(origine)06  -0.008089   0.034022  -0.238 0.812071    
+## factor(origine)07  -0.157025   0.047646  -3.296 0.000991 ***
+## factor(origine)08   0.086372   0.067631   1.277 0.201642    
+## factor(origine)09  -0.102393   0.089699  -1.142 0.253725    
+## factor(origine)10  -0.080472   0.074023  -1.087 0.277049    
+## factor(origine)99  -0.072101   0.042846  -1.683 0.092489 .  
+## factor(education)3 -0.148489   0.019507  -7.612 3.33e-14 ***
+## factor(education)4 -0.267834   0.018719 -14.308  &lt; 2e-16 ***
+## factor(education)5 -0.349819   0.017128 -20.424  &lt; 2e-16 ***
+## factor(education)6 -0.372327   0.028861 -12.901  &lt; 2e-16 ***
+## factor(education)7 -0.463368   0.021304 -21.750  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3681 on 4031 degrees of freedom
+## Multiple R-squared:  0.1509, Adjusted R-squared:  0.1479 
+## F-statistic: 51.15 on 14 and 4031 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>log_reg_contract &lt;- lm(log(salhoraire) ~ factor(origine) + factor(education) + factor(contrat), data= df_last_wage)
+
+summary(log_reg_contract)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(salhoraire) ~ factor(origine) + factor(education) + 
+##     factor(contrat), data = df_last_wage)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.98817 -0.19899 -0.01186  0.19979  2.63278 
+## 
+## Coefficients:
+##                     Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)         2.690423   0.072868  36.922  &lt; 2e-16 ***
+## factor(origine)03   0.102117   0.047310   2.158  0.03095 *  
+## factor(origine)04   0.047150   0.024432   1.930  0.05370 .  
+## factor(origine)05  -0.039847   0.051295  -0.777  0.43731    
+## factor(origine)06   0.004931   0.033252   0.148  0.88213    
+## factor(origine)07  -0.114139   0.046647  -2.447  0.01445 *  
+## factor(origine)08   0.105943   0.066094   1.603  0.10904    
+## factor(origine)09  -0.121623   0.087705  -1.387  0.16560    
+## factor(origine)10  -0.054636   0.072326  -0.755  0.45004    
+## factor(origine)99  -0.056371   0.041869  -1.346  0.17827    
+## factor(education)3 -0.143811   0.019103  -7.528 6.32e-14 ***
+## factor(education)4 -0.254177   0.018393 -13.819  &lt; 2e-16 ***
+## factor(education)5 -0.339197   0.016873 -20.103  &lt; 2e-16 ***
+## factor(education)6 -0.343584   0.028341 -12.123  &lt; 2e-16 ***
+## factor(education)7 -0.438664   0.021042 -20.847  &lt; 2e-16 ***
+## factor(contrat)0    0.003962   0.073129   0.054  0.95680    
+## factor(contrat)1   -0.057487   0.072328  -0.795  0.42678    
+## factor(contrat)2   -0.297930   0.074863  -3.980 7.02e-05 ***
+## factor(contrat)3   -0.335678   0.111357  -3.014  0.00259 ** 
+## factor(contrat)4   -0.145002   0.084896  -1.708  0.08771 .  
+## factor(contrat)5   -0.660144   0.130245  -5.068 4.19e-07 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3594 on 4025 degrees of freedom
+## Multiple R-squared:  0.1917, Adjusted R-squared:  0.1876 
+## F-statistic: 47.72 on 20 and 4025 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>log_reg_health &lt;- lm(log(salhoraire) ~ factor(origine) + factor(education) + factor(contrat) + factor(sante_declaree), data= df_last_wage)
+
+summary(log_reg_health)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(salhoraire) ~ factor(origine) + factor(education) + 
+##     factor(contrat) + factor(sante_declaree), data = df_last_wage)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.99586 -0.19879 -0.01219  0.19872  2.63354 
+## 
+## Coefficients:
+##                           Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)              2.6870321  0.0734059  36.605  &lt; 2e-16 ***
+## factor(origine)03        0.1027875  0.0473244   2.172  0.02992 *  
+## factor(origine)04        0.0474410  0.0244447   1.941  0.05236 .  
+## factor(origine)05       -0.0383135  0.0512952  -0.747  0.45515    
+## factor(origine)06        0.0102347  0.0333174   0.307  0.75872    
+## factor(origine)07       -0.1132755  0.0466474  -2.428  0.01521 *  
+## factor(origine)08        0.1083875  0.0660901   1.640  0.10108    
+## factor(origine)09       -0.1368339  0.0881885  -1.552  0.12084    
+## factor(origine)10       -0.0568192  0.0723148  -0.786  0.43208    
+## factor(origine)99       -0.0482909  0.0420029  -1.150  0.25033    
+## factor(education)3      -0.1455100  0.0191123  -7.613 3.31e-14 ***
+## factor(education)4      -0.2548347  0.0184127 -13.840  &lt; 2e-16 ***
+## factor(education)5      -0.3387656  0.0169367 -20.002  &lt; 2e-16 ***
+## factor(education)6      -0.3419522  0.0283719 -12.052  &lt; 2e-16 ***
+## factor(education)7      -0.4353193  0.0211906 -20.543  &lt; 2e-16 ***
+## factor(contrat)0         0.0038681  0.0731194   0.053  0.95781    
+## factor(contrat)1        -0.0576452  0.0723167  -0.797  0.42543    
+## factor(contrat)2        -0.2982492  0.0748863  -3.983 6.93e-05 ***
+## factor(contrat)3        -0.3377616  0.1113667  -3.033  0.00244 ** 
+## factor(contrat)4        -0.1473089  0.0849119  -1.735  0.08285 .  
+## factor(contrat)5        -0.6563732  0.1302390  -5.040 4.87e-07 ***
+## factor(sante_declaree)2  0.0107379  0.0130122   0.825  0.40929    
+## factor(sante_declaree)3 -0.0008447  0.0178493  -0.047  0.96226    
+## factor(sante_declaree)4 -0.0750966  0.0337152  -2.227  0.02598 *  
+## factor(sante_declaree)5 -0.0296767  0.1365500  -0.217  0.82796    
+## factor(sante_declaree)8  0.2050993  0.1620699   1.265  0.20577    
+## factor(sante_declaree)9 -0.0726651  0.2078993  -0.350  0.72672    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3593 on 4019 degrees of freedom
+## Multiple R-squared:  0.1934, Adjusted R-squared:  0.1882 
+## F-statistic: 37.07 on 26 and 4019 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>For comparing the evolution of origin’s coefficients we use the
+library stargazer which helps to process the information in more
+readable format.</p>
+<pre class="r"><code>stargazer(log_reg_origin, log_reg_education, log_reg_contract, log_reg_health, 
+          type = &quot;text&quot;, 
+          column.labels = c(&quot;Origin&quot;, &quot;+Edu&quot;, &quot;+Contract&quot;, &quot;+Health&quot;))</code></pre>
+<pre><code>## 
+## =============================================================================================================================
+##                                                                  Dependent variable:                                         
+##                         -----------------------------------------------------------------------------------------------------
+##                                                                    log(salhoraire)                                           
+##                                 Origin                    +Edu                    +Contract                  +Health         
+##                                   (1)                      (2)                       (3)                       (4)           
+## -----------------------------------------------------------------------------------------------------------------------------
+## factor(origine)03               0.120**                  0.081*                    0.102**                   0.103**         
+##                                 (0.052)                  (0.048)                   (0.047)                   (0.047)         
+##                                                                                                                              
+## factor(origine)04               -0.004                   0.045*                    0.047*                    0.047*          
+##                                 (0.027)                  (0.025)                   (0.024)                   (0.024)         
+##                                                                                                                              
+## factor(origine)05               -0.023                   -0.059                    -0.040                    -0.038          
+##                                 (0.057)                  (0.052)                   (0.051)                   (0.051)         
+##                                                                                                                              
+## factor(origine)06               -0.041                   -0.008                     0.005                     0.010          
+##                                 (0.037)                  (0.034)                   (0.033)                   (0.033)         
+##                                                                                                                              
+## factor(origine)07              -0.178***                -0.157***                 -0.114**                  -0.113**         
+##                                 (0.051)                  (0.048)                   (0.047)                   (0.047)         
+##                                                                                                                              
+## factor(origine)08                0.095                    0.086                     0.106                     0.108          
+##                                 (0.073)                  (0.068)                   (0.066)                   (0.066)         
+##                                                                                                                              
+## factor(origine)09               -0.184*                  -0.102                    -0.122                    -0.137          
+##                                 (0.097)                  (0.090)                   (0.088)                   (0.088)         
+##                                                                                                                              
+## factor(origine)10               -0.010                   -0.080                    -0.055                    -0.057          
+##                                 (0.080)                  (0.074)                   (0.072)                   (0.072)         
+##                                                                                                                              
+## factor(origine)99              -0.140***                 -0.072*                   -0.056                    -0.048          
+##                                 (0.046)                  (0.043)                   (0.042)                   (0.042)         
+##                                                                                                                              
+## factor(education)3                                      -0.148***                 -0.144***                 -0.146***        
+##                                                          (0.020)                   (0.019)                   (0.019)         
+##                                                                                                                              
+## factor(education)4                                      -0.268***                 -0.254***                 -0.255***        
+##                                                          (0.019)                   (0.018)                   (0.018)         
+##                                                                                                                              
+## factor(education)5                                      -0.350***                 -0.339***                 -0.339***        
+##                                                          (0.017)                   (0.017)                   (0.017)         
+##                                                                                                                              
+## factor(education)6                                      -0.372***                 -0.344***                 -0.342***        
+##                                                          (0.029)                   (0.028)                   (0.028)         
+##                                                                                                                              
+## factor(education)7                                      -0.463***                 -0.439***                 -0.435***        
+##                                                          (0.021)                   (0.021)                   (0.021)         
+##                                                                                                                              
+## factor(contrat)0                                                                    0.004                     0.004          
+##                                                                                    (0.073)                   (0.073)         
+##                                                                                                                              
+## factor(contrat)1                                                                   -0.057                    -0.058          
+##                                                                                    (0.072)                   (0.072)         
+##                                                                                                                              
+## factor(contrat)2                                                                  -0.298***                 -0.298***        
+##                                                                                    (0.075)                   (0.075)         
+##                                                                                                                              
+## factor(contrat)3                                                                  -0.336***                 -0.338***        
+##                                                                                    (0.111)                   (0.111)         
+##                                                                                                                              
+## factor(contrat)4                                                                   -0.145*                   -0.147*         
+##                                                                                    (0.085)                   (0.085)         
+##                                                                                                                              
+## factor(contrat)5                                                                  -0.660***                 -0.656***        
+##                                                                                    (0.130)                   (0.130)         
+##                                                                                                                              
+## factor(sante_declaree)2                                                                                       0.011          
+##                                                                                                              (0.013)         
+##                                                                                                                              
+## factor(sante_declaree)3                                                                                      -0.001          
+##                                                                                                              (0.018)         
+##                                                                                                                              
+## factor(sante_declaree)4                                                                                     -0.075**         
+##                                                                                                              (0.034)         
+##                                                                                                                              
+## factor(sante_declaree)5                                                                                      -0.030          
+##                                                                                                              (0.137)         
+##                                                                                                                              
+## factor(sante_declaree)8                                                                                       0.205          
+##                                                                                                              (0.162)         
+##                                                                                                                              
+## factor(sante_declaree)9                                                                                      -0.073          
+##                                                                                                              (0.208)         
+##                                                                                                                              
+## Constant                       2.391***                 2.636***                  2.690***                  2.687***         
+##                                 (0.007)                  (0.013)                   (0.073)                   (0.073)         
+##                                                                                                                              
+## -----------------------------------------------------------------------------------------------------------------------------
+## Observations                     4,046                    4,046                     4,046                     4,046          
+## R2                               0.008                    0.151                     0.192                     0.193          
+## Adjusted R2                      0.006                    0.148                     0.188                     0.188          
+## Residual Std. Error        0.398 (df = 4036)        0.368 (df = 4031)         0.359 (df = 4025)         0.359 (df = 4019)    
+## F Statistic             3.672*** (df = 9; 4036) 51.155*** (df = 14; 4031) 47.716*** (df = 20; 4025) 37.069*** (df = 26; 4019)
+## =============================================================================================================================
+## Note:                                                                                             *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
+<p>As we can see, adding education to the regression highly modify
+origin’s coefficient. For instance, if we stick to the most significant
+coefficient which correspond to people with African origin (expect
+northern Africa) - modality 7 - we see that it increases following the
+addition of education as an explanatory variable. Without, the model
+predicts that these former people receive an hourly wage 17 % smaller
+than someone with french origin, whereas it predicts only 15 % smaller
+if we add education. Thus education explains a part of wage inequalities
+which means that the wage differences is partially (<span class="math inline">\((0.178 - 0.157) / 0.178 \approx 11.8\%\)</span>)
+conveyed through the education channel. The origin coefficient still
+remains significant which shows that other diffusion channels
+exists.</p>
+<p>When the coefficient decreases following the insertion of education,
+which is only the case for factor 5 - Eastern european , this shows that
+the people with this origin are not paid enough for their level of
+education. Indeed, if the coefficient is initially close to 0 in the
+first regression the model predicts for these people the same hourly
+wage than for the reference group. By adding the education, we see that
+the model predicts a smaller wage all else equals but education. This
+mean that the model tend to predict that this person have in general a
+higher education level than what they are paid for.</p>
+<p>Similarly, adding the type of contract increase all orgin’s
+coefficient (except for factor 9 corresponding to Laotian, Cambodian,
+Vietnamese). The type of contract explains about <span class="math inline">\((refaire le calcule pour facteur 3 11.8\%\)</span>
+of discrimination in hourly wage.</p>
+<p>Finally, adding personal assessment of an individual’s health doesn’t
+modify the coefficient. Therefore origin of people doesn’t seem to
+affect the hourly wage through the health of people. Since health status
+was not correlated with origin in our sample, it cannot explain why
+wages differ by origin.</p>
+</div>
+</div>
+<div id="question-2" class="section level1">
+<h1>Question 2</h1>
+<div id="a-education-a-bad-control-variable" class="section level2">
+<h2>a) Education : a bad control variable</h2>
+<p>Our goal is here to obtain a causal regression all else equals to
+interpret wage differences as inequalities. But we face usual endogeneic
+problems in econometric. Endogeneity appears when E[Xepsilon] =/ 0, that
+is to say when explanatory variables are correlated with the residuals.
+This is always the case because it is obviously impossible to explain
+the effect of a specific variable link to the real world with a finite
+number of explanatory variables, but we can try to have an expectation
+near 0.</p>
+<p>This endogeneity issue is not a problem as long as we only try to
+predict a result according to a regression model. But here we want to
+have a causal interpretation of coefficients of our regressions. To do
+that we need to erase all bias due to omitted variables.</p>
+<p>It is easy to support that education plays a role in hourly wage
+differences. But it is well known in economic that the level of
+education of people depends on a lot of different factors impossible to
+capture (motivation, talent, …). In order to still have a causal
+interpretation of origin’s coefficient we use an instrumental variable
+to isolate the role of education towards wage inequalities which is
+necessary to have a causal interpretation of all other explanatory
+variables.</p>
+<p>Moreover, we need to be really cautious when we include control
+variables that are a consequence of the origin of people because we are
+in presence of a post-treatment bias (or mediation bias). In this case
+the causal indirect effect of origin will be partially captured in the
+control variable and the inequalities will seem smaller that what they
+really are (risk of bad controls). Education falls in this category, but
+it being nonetheless one of the major channel where inequalities go
+through, it is useful to try to add it as a explanatory variable. By
+adding it we will in the rest of the question focus on the direct role
+of origin in wage inequalities. The model without education measures the
+total systemic disadvantage starting from birth, whereas the model with
+education focuses on direct labor market discrimination. By controlling
+for degrees, we can observe the wage gap that exists between individuals
+who possess equal skills and schooling. To have the total effect of
+origin over hourly wage differences one can look at the coefficient of
+the simple regression on question 1/c) where we regress ‘salhoraire’ on
+‘origine’.</p>
+</div>
+<div id="b-choice-of-instrumental-variables" class="section level2">
+<h2>b) Choice of instrumental variables</h2>
+<p>The purpose of instrumental variables is to isolate the part of the
+education level that is independent of unobservable factors, such as
+innate talent or motivation. By doing so, we ensure that the estimated
+coefficient represents the true causal effect of education on wages,
+rather than reflecting these omitted variables. To do that, an
+instrumental variable should be : - relevant = be correlated to the
+explanatory variable (cov(Z,X) /= 0) - exogenous = only influence the
+dependent variable through the explanatory variable (corr(Z,epsilon) =
+0)</p>
+<p>Besides to compute the model, instrumental variables need to respect
+an order condition. The number of instrumental variables (m) should be
+equal or superior to the number of explanatory endogenous variables (k).
+Here we assume that only education is endogenous, thus we need 1 or more
+instrumental variable. Having more than k instrumental variables allow
+to use a Sargan test to test the validity of our model (over identified
+model).</p>
+<p>In this study, we propose to use the socioeconomic status (CSP) of
+both parents as instruments for the education level. While they are
+significantly correlated, including both allows for an
+over-identification test (Sargan test) to assess the validity of our
+instrumental block. Although parental CSP might be criticized for
+potential direct links to job networks, it remains the most robust
+predictor of educational attainment available in the dataset.”</p>
+</div>
+<div id="c-instrumental-regression" class="section level2">
+<h2>c) Instrumental regression</h2>
+<pre class="r"><code># leveling education to ensure the right factor as referent
+df_last_wage &lt;- df_last_wage %&gt;% 
+  mutate(
+    # 1 corresponds to people having a degree above two years post-baccalaureate
+    education = fct_relevel(education, &quot;1&quot;)
+  )
+
+# classic formula for R format, formula for the second stage
+second_stage_log_reg_formula &lt;- reformulate(termlabels= explanatory_variables, response = log_dependent_variable)
+second_stage_log_reg_formula &lt;- paste(format(second_stage_log_reg_formula), collapse =&quot;&quot;)
+
+# first stage formula
+first_stage_log_reg_formula &lt;- &quot;| factor(education) ~ factor(csp_mere) + factor(csp_pere)&quot;
+
+# we paste these two formula into one to fit the format of feols function of the package fixest.
+log_reg_formula_iv &lt;- as.formula(paste(second_stage_log_reg_formula, first_stage_log_reg_formula))
+
+
+# 2SLS with fixest package to obtain the right standard error in the model prediction
+log_reg_iv &lt;- feols(log_reg_formula_iv, data = df_last_wage)
+
+summary(log_reg_iv)</code></pre>
+<pre><code>## TSLS estimation
+## |- D.V.   : log(salhoraire)
+## |- Endo.  : factor(education)
+## |- Instr. : factor(csp_mere), factor(csp_pere)
+## |
+## |=&gt; Second Stage
+## |   Dep. Var.: log(salhoraire)
+## Observations: 4,046
+## Standard-errors: IID 
+##                         Estimate Std. Error    t value   Pr(&gt;|t|)    
+## (Intercept)             2.382068   0.059613  39.958874  &lt; 2.2e-16 ***
+## fit_factor(education)3 -0.337721   0.122152  -2.764761 5.7224e-03 ** 
+## fit_factor(education)4 -0.185392   0.112732  -1.644542 1.0014e-01    
+## fit_factor(education)5 -0.546168   0.077924  -7.008966 2.8026e-12 ***
+## fit_factor(education)6 -0.629490   0.196960  -3.196029 1.4041e-03 ** 
+## fit_factor(education)7 -0.637919   0.100208  -6.365963 2.1584e-10 ***
+## factor(origine)03       0.057236   0.048899   1.170497 2.4187e-01    
+## factor(origine)04       0.048233   0.027992   1.723092 8.4949e-02 .  
+## factor(origine)05      -0.091200   0.053514  -1.704227 8.8416e-02 .  
+## factor(origine)06      -0.025598   0.036731  -0.696900 4.8591e-01    
+## factor(origine)07      -0.149020   0.051270  -2.906595 3.6738e-03 ** 
+## factor(origine)08       0.055077   0.073218   0.752226 4.5196e-01    
+## factor(origine)09      -0.061019   0.097073  -0.628593 5.2965e-01    
+## factor(origine)10      -0.121574   0.076201  -1.595449 1.1069e-01    
+## factor(origine)99      -0.061155   0.046749  -1.308158 1.9089e-01    
+## factor(homme)0         -0.167541   0.013261 -12.634447  &lt; 2.2e-16 ***
+## revised_age             0.023502   0.003440   6.832580 9.5941e-12 ***
+## revised_age_squared    -0.000239   0.000061  -3.912618 9.2809e-05 ***
+## factor(tuu_r)2         -0.029494   0.017425  -1.692601 9.0609e-02 .  
+## factor(tuu_r)3         -0.012926   0.017862  -0.723649 4.6932e-01    
+## factor(tuu_r)4         -0.013290   0.017198  -0.772744 4.3972e-01    
+## factor(tuu_r)5          0.068597   0.023763   2.886724 3.9135e-03 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## RMSE: 0.360517   Adj. R2: 0.126446
+## F-test (1st stage), factor(education)3: stat =  1.7228, p = 4.073e-4, on 62 and 3,967 DoF.
+## F-test (1st stage), factor(education)4: stat =  1.3083, p = 0.053832, on 62 and 3,967 DoF.
+## F-test (1st stage), factor(education)5: stat =  3.6323, p &lt; 2.2e-16 , on 62 and 3,967 DoF.
+## F-test (1st stage), factor(education)6: stat =  1.2992, p = 0.058558, on 62 and 3,967 DoF.
+## F-test (1st stage), factor(education)7: stat =  3.7190, p &lt; 2.2e-16 , on 62 and 3,967 DoF.
+##                             Wu-Hausman: stat =  3.3836, p = 0.004716, on 5 and 4,019 DoF.
+##                                 Sargan: stat = 70.5151, p = 0.107671, on 57 DoF.</code></pre>
+<p>The two-stage least squared regression made thanks to the function
+feols of the fixest package comes with 3 different tests that allow us
+to see if we implement valid instrumental variable.</p>
+<p>The F-test (i.e first test) verify if our instrument variable are
+really relevant : correlated to the explanatory variable which is here
+education. It is a multilevel test where the null hypothesis is that the
+coefficient of each instrumental variables is null, H0 = betacsp_mere =
+betacsp_pere = 0. We search to reject H0. In this regression we reject
+all null hypothesis at 10% and event at 1% for most of the factor in
+education. However, to have a good instrumental regression, it is
+customary to search to obtain a t-statistic for the F-test superior to
+10, else coefficients of are instrumental variable are consider too
+small to well predict the education variable. The problem here is
+probably due to the amount of different variable becuause we regress
+over 62 degree of liberty : each socioeconomic status is divided into ‘r
+length(unique(df_last_wage$csp_mere))’ variable which each correspond to
+one modality because of the factoring process.</p>
+<p>The Sargan test null hypothesis is that all are instrument are valid.
+Therefore we don’t want to reject this hypothesis. Having a p-value over
+0.1 is enough to not being able to reject H0.</p>
+<p>Fianlly, we need to see if this approach is worth it or no. OLS model
+is by definition more precise than a two-stage least square (smaller
+standard error). That’s why we want to use the instrumental approach
+only if education is an endogenous variable in the OLS. For testing that
+we look at the Wu-Hausman test. This test compare the coefficient of
+education in the OLS and in the instrumental regression. If both
+coefficient are close enough one to another we concludes that it was not
+necessary to implement instrument variables. The null hypothesis of this
+test is that <span class="math inline">\(beta_iv - beta_OLS =
+0\)</span>. We here reject at a 1% level which shows that education was
+an edogenous in the OLS regression.</p>
+<p>Technically, the model confirms the necessity of an instrumental
+variable approach (significant Wu-Hausman test) and the consistency of
+the instruments (non-significant Sargan test). However, the instruments
+are weak (<span class="math inline">\(F &lt; 10\)</span>). The high
+number of socioeconomic status (SES) categories—resulting in 62 degrees
+of freedom—dilutes the first-stage predictive power. Because of the
+weakness of the coefficient, the model might over fit the noise. Indeed
+by multiplying the modality we cluster are dataset into very small group
+which tend to let too much weight on outliers.</p>
+<p>To stabilize the results and achieve a reliable causal estimation,
+grouping these categories into broader clusters is essential. In order
+to do that we will regroup the socioeconomic status into the 7 reference
+group provide by INSEE : <a href="https://www.insee.fr/fr/metadonnees/pcs2020/groupeSocioprofessionnel/1?champRecherche=true" class="uri">https://www.insee.fr/fr/metadonnees/pcs2020/groupeSocioprofessionnel/1?champRecherche=true</a></p>
+<pre class="r"><code># each reference group correspond to the first figure of the detailed group number 
+df_last_wage &lt;- df_last_wage %&gt;% 
+  mutate(
+    reference_csp_mere = substr(csp_mere,1,1),
+    reference_csp_pere = substr(csp_pere,1,1)
+  ) 
+
+
+# classic formula for R format, formula for the second stage
+second_stage_log_reg_formula &lt;- reformulate(termlabels= explanatory_variables, response = log_dependent_variable)
+second_stage_log_reg_formula &lt;- paste(format(second_stage_log_reg_formula), collapse =&quot;&quot;)
+
+# first stage formula
+first_stage_log_reg_formula &lt;- &quot;| factor(education) ~ factor(reference_csp_mere) + factor(reference_csp_pere)&quot;
+
+# we paste these two formula into one to fit the format of feols function of the package fixest.
+log_reg_formula_iv &lt;- as.formula(paste(second_stage_log_reg_formula, first_stage_log_reg_formula))
+
+# 2SLS with fixest package to obtain the right standard error in the model prediction
+log_reg_iv &lt;- feols(log_reg_formula_iv, data = df_last_wage)
+
+summary(log_reg_iv)</code></pre>
+<pre><code>## TSLS estimation
+## |- D.V.   : log(salhoraire)
+## |- Endo.  : factor(education)
+## |- Instr. : factor(reference_csp_mere), factor(reference_csp_pere)
+## |
+## |=&gt; Second Stage
+## |   Dep. Var.: log(salhoraire)
+## Observations: 4,046
+## Standard-errors: IID 
+##                         Estimate Std. Error   t value  Pr(&gt;|t|)    
+## (Intercept)             2.390150   0.089380 26.741331 &lt; 2.2e-16 ***
+## fit_factor(education)3 -0.586758   0.518907 -1.130759 0.2582239    
+## fit_factor(education)4 -0.133245   0.343704 -0.387672 0.6982789    
+## fit_factor(education)5 -0.706669   0.276763 -2.553337 0.0107062 *  
+## fit_factor(education)6  0.057031   0.579294  0.098450 0.9215801    
+## fit_factor(education)7 -0.589740   0.230223 -2.561602 0.0104552 *  
+## factor(origine)03       0.045828   0.068603  0.668022 0.5041577    
+## factor(origine)04       0.013920   0.048300  0.288197 0.7732108    
+## factor(origine)05      -0.050188   0.083307 -0.602446 0.5469113    
+## factor(origine)06      -0.030670   0.052238 -0.587130 0.5571491    
+## factor(origine)07      -0.218522   0.090080 -2.425872 0.0153153 *  
+## factor(origine)08       0.024450   0.141144  0.173224 0.8624837    
+## factor(origine)09      -0.135251   0.180644 -0.748718 0.4540709    
+## factor(origine)10      -0.143912   0.123147 -1.168625 0.2426241    
+## factor(origine)99      -0.148921   0.093535 -1.592136 0.1114327    
+## factor(homme)0         -0.172854   0.019916 -8.678943 &lt; 2.2e-16 ***
+## revised_age             0.028787   0.010248  2.809087 0.0049922 ** 
+## revised_age_squared    -0.000358   0.000184 -1.948888 0.0513782 .  
+## factor(tuu_r)2         -0.045849   0.023750 -1.930460 0.0536200 .  
+## factor(tuu_r)3         -0.010861   0.026716 -0.406522 0.6843806    
+## factor(tuu_r)4         -0.023182   0.026144 -0.886706 0.3752903    
+## factor(tuu_r)5          0.054863   0.048385  1.133897 0.2569054    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## RMSE: 0.423073   Adj. R2: 0.116656
+## F-test (1st stage), factor(education)3: stat =  2.7412, p = 7.023e-4, on 13 and 4,016 DoF.
+## F-test (1st stage), factor(education)4: stat =  3.1155, p = 1.212e-4, on 13 and 4,016 DoF.
+## F-test (1st stage), factor(education)5: stat = 12.2417, p &lt; 2.2e-16 , on 13 and 4,016 DoF.
+## F-test (1st stage), factor(education)6: stat =  1.2891, p = 0.211171, on 13 and 4,016 DoF.
+## F-test (1st stage), factor(education)7: stat = 12.5355, p &lt; 2.2e-16 , on 13 and 4,016 DoF.
+##                             Wu-Hausman: stat =  2.0747, p = 0.065551, on 5 and 4,019 DoF.
+##                                 Sargan: stat =  3.8758, p = 0.868152, on 8 DoF.</code></pre>
+<p>Unlike the former regression, the the first stage F-statistic now
+exceed the rule_of_thumb threshold of 10. As fot the instrumental
+regression with detailed socioeconomic group, the p-values of F-tests
+and Sargan test shows that it this model is statistically valid.</p>
+<p>However, it is now only possible to reject the Wu-Hausman test with a
+10% significativity rate. Even if this evidence of endogeneity is more
+moderate than in the previous model, we will assume, because of the vast
+research on this topic in econometrics that education is an endogenous
+variable and should be treated as such. That’s why this instrument
+variable is in our opinion better than an OLS on the log of the hourly
+wage over education and other explanatory variables.</p>
+</div>
+<div id="d-interpretation-of-origins-coefficients" class="section level2">
+<h2>d) Interpretation of origin’s coefficients</h2>
+<p>Thanks to the work done in previous questions, we are know able to
+interprate in a causal way the coefficient of the second instrumental
+regression. In the OLS model omitting education, both the ‘Maghreb’ (06)
+and ‘Rest of Africa’ (07) categories exhibited significant wage
+penalties of 10.3% and 22.1%, respectively (question 1/c). Once
+education is properly instrumented in our instrumental variable model,
+the coefficient for the Maghreb becomes statistically insignificant.
+This reversal suggests that for individuals of Northern African origin,
+the observed wage gap is primarily explained by differences in level of
+education rather than direct labor market discrimination due to origin.
+In contrast, the penalty for the ‘Rest of Africa’ remains nearly
+identical and highly significant (approx. 22%) in both models. This
+indicates a persistent ‘residual’ disadvantage for this group that
+schooling alone cannot bridge.</p>
+<p>Furthermore, the gender pay gap widens from 13.6% in the OLS to 17.3%
+in the instrumental variable model, suggesting that the initial OLS was
+underestimating the true extent of gender inequality.</p>
+<p>These findings confirm the necessity of our IV approach to accurately
+unpack the complex interactions between social origin, schooling, and
+earnings.</p>
+</div>
+</div>
+<div id="question-3" class="section level1">
+<h1>Question 3</h1>
+<p>From now on, we use the whole dataset at our disposal to be able to
+erase all unobserved individual terms - unchanged in time - that bias
+coefficients with whom we are triying to have a causal interpretation of
+the hourly wage.</p>
+<p>Panel regression takes the following form : <span class="math display">\[y_{it} = \beta x_{it} + \alpha_i +
+\epsilon_{it}\]</span> Where : - <span class="math inline">\(y_{it}\)</span> is the dependent variable of
+individual i at time t (in this case the hourly wage) - <span class="math inline">\(x_{it}\)</span> are all explanatory variables of
+individual i at time t - <span class="math inline">\(\alpha_i\)</span>
+is the unobserved terms of individual i. these are invariant in time and
+represent effect such as his talent, his motivation, and so on. - <span class="math inline">\(\epsilon_{it}\)</span> being the noise of the
+model</p>
+<pre class="r"><code>df_panel_wage &lt;- df_wage %&gt;% 
+  filter(t == 1 | t == 6)
+
+# We transform the dataframe into a panel structure one required for using the plm package
+# index allows to identify the person and the year
+pdata_wage &lt;- pdata.frame(df_panel_wage, index = c(&quot;id_individu&quot;, &quot;t&quot;))</code></pre>
+<p>We pre-process this dataframe we the same transformation that we have
+done in the first two questions</p>
+<pre class="r"><code>pdata_wage$revised_age &lt;- pdata_wage$age - min(pdata_wage$age)
+
+# capturing the quadratic relation
+pdata_wage$revised_age_squared &lt;- pdata_wage$revised_age ^ 2
+
+
+pdata_wage$homme &lt;- as.character(pdata_wage$homme)
+
+# as_factor interpret coefficients relatively to the first level in alphebitc order. To have an easier interpretation of the coefficient we will ensure that the compared modality will be France (01) for origin, Man (1) for homme and rural municipality for tuu_r (1)
+
+pdata_wage &lt;- pdata_wage %&gt;% 
+  mutate(
+    # 01 corresponds to a french origin
+    origine = fct_relevel(origine, &quot;01&quot;),
+    
+    # 1 corresponds to being a man
+    homme = fct_relevel(homme, &quot;1&quot;),
+    
+    # 1 corresponds to rural municipality
+    tuu_r  = fct_relevel(tuu_r, &quot;1&quot;),
+    
+    # 1 corresponds to people having a degree above two years post-baccalaureate
+    education = fct_relevel(education, &quot;1&quot;)
+  )</code></pre>
+<div id="a-random-effect-panel-regression" class="section level2">
+<h2>a) Random effect panel regression</h2>
+<p>The goal of panel regression is therefore to obtain a causal
+interpretation of the effect of explanatory variables on the dependent
+variable free of all bias due to unobserved ability of individuals
+(motivation, …).</p>
+<p>Because these unobserved terms are time invariant, the most robust
+model who assure to have a valid causal interpretation is obtain by
+doing the usual least squared estimation of coefficient on a model where
+we substracts the mean over time from the original model. This method,
+called the Fixed effect is super robust but very inflexible, indeed it
+unfortunatly also prevents to capture the effect of time invariant
+explanatory variables.</p>
+<p>Step 1 : Original model <span class="math display">\[y_{it} = \beta
+x_{it} + \alpha_i + \epsilon_{it}\]</span></p>
+<p>Step 2 : new model obtained by de-meaning the first equation (Within
+transformation) <span class="math display">\[(y_{it} - \bar{y}_i) =
+\beta (x_{it} - \bar{x}_i) + (\alpha_i - \alpha_i) + (\epsilon_{it} -
+\bar{\epsilon}_i) \\ \iff \\ y^*_{it} = \beta x^*_{it} +
+\epsilon^*_{it}\]</span> Because for all time invariant terms <span class="math inline">\(\frac{1}{n} \sum_{t=1}^{T} x_{it} =
+x_{it}\)</span>, we see there that they also disappear in this new
+equation.</p>
+<p>Step 3 : estimation of the coefficients with the transformed equation
+(OLS) <span class="math display">\[\min_{\beta} \sum_{i=1}^{n}
+\sum_{t=1}^{T} (y^*_{it} - \beta x^*_{it})^2\]</span></p>
+<p>Step 4 : Prediction <span class="math display">\[\hat{y}_{it} =
+\hat{\alpha}_i + \hat{\beta} x_{it}\]</span> Where <span class="math inline">\(\hat{\alpha}_i = \bar{y}_i - \hat{\beta}
+\bar{x}_i\)</span></p>
+<p>As said before the issue with this process is that we loose all time
+invariant explanatory variable which is here a major issue since we want
+to find inequalities in wage due to the origin of people, which
+obviously fall in the forgotten variable. To adress this issue an other
+process is possible : the random effect regression.</p>
+<p>Instead of substracting the entire mean of variables with whom we
+work we only substracts a certain percentage (<span class="math inline">\(\theta\)</span>) of it.</p>
+<p>Thus, the first step remains the same, but we apply in step 2 a
+quasi-difference transformation : <span class="math display">\[(y_{it} -
+\theta\bar{y}_i) = (1 - \theta) \beta_{0} + \beta (x_{it} -
+\theta\bar{x}_i) +  \gamma (1 - \theta) z_{i}+(1 - \theta) \alpha_i +
+(\epsilon_{it} - \theta\bar{\epsilon}_i) \\ \iff \\ y^*_{it} = \beta
+x^*_{it} + \gamma z^*_{i} + \nu^*_{it}\]</span> where <span class="math inline">\(\theta \in [0,1]\)</span>, <span class="math inline">\(z_{i}\)</span> are the time invariant explanatory
+variables and $^*_{it} = (1 - ) <em>i + (</em>{it} - {}_i) $</p>
+<p>Step 3 : estimation of the coefficients with the transformed equation
+(OLS) <span class="math display">\[\min_{\beta} \sum_{i=1}^{n}
+\sum_{t=1}^{T} (y^*_{it} - \beta x^*_{it} - \gamma
+z^*_{i})^2\]</span></p>
+<p>In step 4, the prediction becomes : <span class="math display">\[\hat{y}_{it} = \hat{\beta}_0 + \hat{\beta} x_{it}
++ \gamma\hat{z}_{i}\]</span></p>
+<p>For being able to have a causal interpretation of this model, the
+sine qua non condition is that the unobserved individual term are
+uncorrelated to all the explanatory variable : <span class="math inline">\(Cov(X_{it}, \alpha_{i}) = 0, \forall i,t\)</span>
+and <span class="math inline">\(Cov(Z_{it}, \alpha_{i}) = 0, \forall i,
+t\)</span>.</p>
+<table style="width:6%;">
+<colgroup>
+<col width="5%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>Aside : finding the right <span class="math inline">\(\theta\)</span></td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\theta\)</span> is chosen so that it
+minimizes the serial correlation of errors within the same individual.
+<span class="math display">\[\theta = 1 -
+\sqrt{\frac{\sigma^2_\epsilon}{\sigma^2_\epsilon + T
+\sigma^2_\alpha}}\]</span> Where T is the number of period in the panel
+dataframe</td>
+</tr>
+<tr class="odd">
+<td>We first estimate the variance of the random noise by doing a fixed
+effects regression and then we estimate the one of the unobserved terms
+thanks to a between regression (difference over the mean of each
+person).</td>
+</tr>
+</tbody>
+</table>
+<p>In this question we assume the exogeneity of the <span class="math inline">\(\alpha_i\)</span> and so we can use the random
+effects framework presented above. Because of exogeneity we can have a
+causal integration that includes invariant time explanatory variables in
+particular origin.</p>
+<pre class="r"><code>re_explanatory_variables &lt;- c(explanatory_variables, &quot;factor(education)&quot;)
+
+re_formula &lt;- reformulate(termlabels = re_explanatory_variables, response = log_dependent_variable)
+print(re_formula)</code></pre>
+<pre><code>## log(salhoraire) ~ factor(origine) + factor(homme) + revised_age + 
+##     revised_age_squared + factor(tuu_r) + factor(education)</code></pre>
+<pre class="r"><code>re_reg &lt;- plm(formula = re_formula, data =pdata_wage, model = &quot;random&quot;)
+
+summary(re_reg)</code></pre>
+<pre><code>## Oneway (individual) effect Random Effect Model 
+##    (Swamy-Arora&#39;s transformation)
+## 
+## Call:
+## plm(formula = re_formula, data = pdata_wage, model = &quot;random&quot;)
+## 
+## Unbalanced Panel: n = 4424, T = 1-2, N = 8196
+## 
+## Effects:
+##                   var std.dev share
+## idiosyncratic 0.03953 0.19883 0.327
+## individual    0.08146 0.28541 0.673
+## theta:
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.4284  0.5581  0.5581  0.5478  0.5581  0.5581 
+## 
+## Residuals:
+##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+## -1.54849 -0.09491  0.00417  0.00088  0.10400  2.00625 
+## 
+## Coefficients:
+##                        Estimate  Std. Error  z-value  Pr(&gt;|z|)    
+## (Intercept)          2.2696e+00  3.3641e-02  67.4639 &lt; 2.2e-16 ***
+## factor(origine)03    4.0135e-02  4.1179e-02   0.9747 0.3297294    
+## factor(origine)04    3.1200e-02  2.1397e-02   1.4581 0.1448063    
+## factor(origine)05   -8.1512e-02  4.4291e-02  -1.8404 0.0657118 .  
+## factor(origine)06   -3.6302e-02  2.8254e-02  -1.2848 0.1988479    
+## factor(origine)07   -1.5819e-01  4.0887e-02  -3.8690 0.0001093 ***
+## factor(origine)08   -2.3726e-03  5.8301e-02  -0.0407 0.9675384    
+## factor(origine)09   -6.7349e-02  7.5395e-02  -0.8933 0.3717070    
+## factor(origine)10   -8.7655e-02  6.1200e-02  -1.4323 0.1520714    
+## factor(origine)99   -1.0094e-01  3.5733e-02  -2.8248 0.0047303 ** 
+## factor(homme)0      -1.6794e-01  9.9106e-03 -16.9459 &lt; 2.2e-16 ***
+## revised_age          2.4066e-02  2.2417e-03  10.7354 &lt; 2.2e-16 ***
+## revised_age_squared -2.5133e-04  3.8717e-05  -6.4914 8.504e-11 ***
+## factor(tuu_r)2      -1.8649e-02  1.4647e-02  -1.2733 0.2029249    
+## factor(tuu_r)3      -1.3357e-03  1.4969e-02  -0.0892 0.9288959    
+## factor(tuu_r)4       1.5776e-02  1.3798e-02   1.1434 0.2528860    
+## factor(tuu_r)5       1.0430e-01  1.8075e-02   5.7706 7.900e-09 ***
+## factor(education)3  -1.4800e-01  1.6692e-02  -8.8664 &lt; 2.2e-16 ***
+## factor(education)4  -2.6659e-01  1.5987e-02 -16.6754 &lt; 2.2e-16 ***
+## factor(education)5  -4.0616e-01  1.4959e-02 -27.1509 &lt; 2.2e-16 ***
+## factor(education)6  -4.3871e-01  2.4358e-02 -18.0110 &lt; 2.2e-16 ***
+## factor(education)7  -5.3544e-01  1.8167e-02 -29.4737 &lt; 2.2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Total Sum of Squares:    429.47
+## Residual Sum of Squares: 331.52
+## R-Squared:      0.22934
+## Adj. R-Squared: 0.22736
+## Chisq: 1863.99 on 21 DF, p-value: &lt; 2.22e-16</code></pre>
+<p>As seen <span class="math inline">\(\theta\)</span> depends on the
+number of period T, here we can see that it changes because we have an
+unbalanced panel, i.e that for some person we don’t have both values of
+their hourly wage (for t = 1 and t = 6)</p>
+</div>
+</div>
+<div id="part-2" class="section level1">
+<h1>Part 2</h1>
 </div>
 
 
