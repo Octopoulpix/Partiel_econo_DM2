@@ -423,7 +423,7 @@ head(df)</code></pre>
 observations in df with a wage associated</p>
 <pre class="r"><code>df_wage &lt;- df %&gt;% 
   filter(!is.na(salhoraire) &amp; acteu == 1)</code></pre>
-<p>8196 observations over 60000 have a mensual salary indicated. Indeed
+<p>8196 observations over 60000 have a monthly salary indicated. Indeed
 the wage is only available in the first and last quarter of the
 dataframe for employed individuals.</p>
 </div>
@@ -443,12 +443,12 @@ worker.</p>
 df_last_wage$revised_age_squared &lt;- df_last_wage$revised_age ^ 2</code></pre>
 <div id="a-linear-regression-results" class="section level2">
 <h2>a) Linear regression results</h2>
-<p>For explanatory variables we obviously want to include origine
-because that is what explanatory us in the regression. To isolate a
-correct effect of the variable “origine” on the hourly wage, we have to
-choose variables which are correlated with the hourly wage but also with
-the variable “origine”. Indeed, we want to avoid an Omitted Variable
-Bias (OVB). We thus selected 4 variables :</p>
+<p>For explanatory variables we obviously want to include origin because
+that is what we want to explain in the regression. To isolate a correct
+effect of the variable “origine” on the hourly wage, we have to choose
+variables which are correlated with the hourly wage but also with the
+variable “origine”. Indeed, we want to avoid an Omitted Variable Bias
+(OVB). We thus selected 4 variables :</p>
 <ul>
 <li>“homme”, an indicator of being a man (0 if a woman, 1 else)</li>
 <li>“revised_age” and “revised_age_squared” (as described above).</li>
@@ -487,8 +487,8 @@ df_last_wage &lt;- df_last_wage %&gt;%
     tuu_r  = fct_relevel(tuu_r, &quot;1&quot;)
   )</code></pre>
 </div>
-<div id="b-interpretation-of-orgines-coefficients" class="section level2">
-<h2>b) Interpretation of orgine’s coefficients</h2>
+<div id="b-interpretation-of-origins-coefficients" class="section level2">
+<h2>b) Interpretation of origin’s coefficients</h2>
 <pre class="r"><code>level_dependent_variable &lt;- &quot;salhoraire&quot;
 
 # reformulate is use to transform vector into official R formula
@@ -537,22 +537,23 @@ the comparator modality. Thus the regression seems to work since we
 found that the more you lived in a big city (higher factor tuu_r) the
 more the model predicts you a higher salary (+ 2.324 euros if you live
 in Paris conurbation). Factor(homme) being positive makes the model
-predicts a higher hourly salary if you are a man than a woman (+ 1,60
+predicts a higher hourly salary if you are a man than a woman (+ 1.60
 euros). Both of these variables seems to be relevant as the p_value
-suggest it (statistically significant at the 0.001% level).\</p>
+suggest it (statistically significant at the 0.001% level).</p>
 <p>We also notice that revised_age is only statistically significant at
 the 5% level but revised_age squared is not statistically significant,
-so we can only conclude on the linear positive effect of this variable.
-\</p>
+so we can only conclude on the linear positive effect of this
+variable.</p>
 <p>Regarding the variable “origine”, only a few coefficients are
 statistically significant, which means that for most origins, we cannot
 formally conclude whether there is a wage difference compared to the
-reference group (French). \ However, when it comes to North African (06)
-and African (07) origins, we have statistically significant coefficients
-of respectively -1.550 and -2.544. For example, that tells us that,
-every think else being equal (same sex, age, and living in the same type
-of urban area), being of North African origin decreased by 1.550 euros
-of the hourly wage.</p>
+reference group (French).</p>
+<p>However, when it comes to North African (06) and African (07)
+origins, we have statistically significant coefficients of respectively
+-1.550 and -2.544. For example, that tells us that, everything else
+being equal (same sex, age, and living in the same type of urban area),
+being of North African origin decreased by 1.550 euros of the hourly
+wage.</p>
 <pre class="r"><code>log_dependent_variable &lt;- &quot;log(salhoraire)&quot;
 
 reg_formula &lt;- reformulate(termlabels= explanatory_variables, response = log_dependent_variable)
@@ -598,13 +599,13 @@ high statistical significance of the age variables, which were
 previously non-significant (in the level model). We can therefore notice
 the classic concave wage-experience profile with a positive coefficient
 of revised_age (0.02) but a negative one for its squared (-0.00026). In
-short, wages increase with age but until a certain point. \</p>
+short, wages increase with age but until a certain point.</p>
 <p>In this regression, the coefficients represent semi-elasticities. For
 example, being a woman is associated with a 13.6% wage penalty compared
-to men, everything else being equal. \</p>
+to men, everything else being equal.</p>
 <p>Moreover, when it comes to our main variable, we find again
 significant wage penalties for individuals of North African (-10.3%) and
-African (-22.1%) origins, everything else being equal. \</p>
+African (-22.1%) origins, everything else being equal.</p>
 </div>
 <div id="c-diffusion-channels-of-inequalities-due-to-the-origin-of-people" class="section level2">
 <h2>c) Diffusion channels of inequalities due to the origin of
@@ -767,9 +768,9 @@ summary(log_reg_health)</code></pre>
 ## Residual standard error: 0.3593 on 4019 degrees of freedom
 ## Multiple R-squared:  0.1934, Adjusted R-squared:  0.1882 
 ## F-statistic: 37.07 on 26 and 4019 DF,  p-value: &lt; 2.2e-16</code></pre>
-<p>For comparing the evolution of origin’s coefficients we use the
-library stargazer which helps to process the information in more
-readable format.</p>
+<p>To compare the evolution of origin’s coefficients we use the library
+stargazer which helps to process the information in more readable
+format.</p>
 <pre class="r"><code>stargazer(log_reg_origin, log_reg_education, log_reg_contract, log_reg_health, 
           type = &quot;text&quot;, 
           column.labels = c(&quot;Origin&quot;, &quot;+Edu&quot;, &quot;+Contract&quot;, &quot;+Health&quot;))</code></pre>
@@ -870,7 +871,7 @@ readable format.</p>
 ## F Statistic             3.672*** (df = 9; 4036) 51.155*** (df = 14; 4031) 47.716*** (df = 20; 4025) 37.069*** (df = 26; 4019)
 ## =============================================================================================================================
 ## Note:                                                                                             *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
-<p>As we can see, adding education to the regression highly modify
+<p>As we can see, adding education to the regression highly modifies the
 origin’s coefficient. For instance, if we stick to the most significant
 coefficient which correspond to people with African origin (expect
 northern Africa) - modality 7 - we see that it increases following the
@@ -888,7 +889,7 @@ the people with this origin are not paid enough for their level of
 education. Indeed, if the coefficient is initially close to 0 in the
 first regression the model predicts for these people the same hourly
 wage than for the reference group. By adding the education, we see that
-the model predicts a smaller wage all else equals but education. This
+the model predicts a smaller wage all else equal but education. This
 mean that the model tend to predict that this person have in general a
 higher education level than what they are paid for.</p>
 <p>Similarly, adding the type of contract increase all orgin’s
@@ -906,9 +907,9 @@ wages differ by origin.</p>
 <h1>Question 2</h1>
 <div id="a-education-a-bad-control-variable" class="section level2">
 <h2>a) Education : a bad control variable</h2>
-<p>Our goal is here to obtain a causal regression all else equals to
-interpret wage differences as inequalities. But we face usual endogeneic
-problems in econometric. Endogeneity appears when <span class="math inline">\(E[X\epsilon] \neq 0\)</span>, that is to say when
+<p>Our goal is here to obtain a causal regression all else equal to
+interpret wage differences as inequalities. But we face usual
+endogeneity problems in econometric. Endogeneity appears when <span class="math inline">\(E[X\epsilon] \neq 0\)</span>, that is to say when
 explanatory variables are correlated with the residuals. This is often
 the case because it is obviously impossible to explain the effect of a
 specific variable link to the real world with a finite number of
@@ -950,17 +951,19 @@ education level that is independent of unobservable factors, such as
 innate talent or motivation. By doing so, we ensure that the estimated
 coefficient represents the true causal effect of education on wages,
 rather than reflecting these omitted variables. To do that, an
-instrumental variable should be : - Relevance : be correlated with the
-explanatory variable (cov(Z,X) /= 0) - Exogeneity and Exclusion
-Restriction: only influence the dependent variable through the
-explanatory variable (corr(Z,epsilon) = 0)</p>
-<p>Besides to compute the model, instrumental variables need to respect
-an order condition. The number of instrumental variables (m) should be
-equal or greater than or equal to the number of explanatory endogenous
-variables (k). Here we assume that only education is endogenous, thus we
-need 1 or more instrumental variable. Having more than k instrumental
-variables allow to use a Sargan test to test the validity of our model
-(over identified model).</p>
+instrumental variable should be :</p>
+<ul>
+<li>Relevance : be correlated with the explanatory variable (<span class="math inline">\(Cov(Z,X) \neq 0\)</span>)</li>
+<li>Exogeneity and Exclusion Restriction: only influence the dependent
+variable through the explanatory variable (<span class="math inline">\(Corr(Z,\epsilon) = 0\)</span>)</li>
+</ul>
+<p>In addition, in order to estimate the model, instrumental variables
+need to respect an order condition. The number of instrumental variables
+(m) should be equal or greater than or equal to the number of
+explanatory endogenous variables (k). Here we assume that only education
+is endogenous, thus we need 1 or more instrumental variable. Having more
+than k instrumental variables allow to use a Sargan test to test the
+validity of our model (over identified model).</p>
 <p>In this study, we propose to use the socioeconomic status (CSP) of
 both parents as instruments for the education level. While they are
 significantly correlated, including both allows for an
@@ -1049,15 +1052,14 @@ of the factor in education. However, to have a good instrumental
 regression, it is customary to search to obtain a F-statistic for the
 F-test superior to 10, else coefficients of our instrumental variable
 are consider too small to well predict the education variable. The
-problem here is probably due to the amount of different variable
-becuause we regress over 62 degree of freedom : each socioeconomic
-status is divided into ‘r length(unique(df_last_wage$csp_mere))’
-variable which each correspond to one modality because of the factoring
-process.</p>
+problem here is probably due to the amount of different variable because
+we regress over 62 degree of freedom : each socioeconomic status is
+divided into ‘r length(unique(df_last_wage$csp_mere))’ variable which
+each correspond to one modality because of the factoring process.</p>
 <p>The Sargan test null hypothesis is that all our instrument are valid.
 Therefore we don’t want to reject this hypothesis. Having a p-value over
-0.1 is enough to not being able to reject H0.</p>
-<p>Fianlly, we need to see if this approach is worth it or no. OLS model
+0.1 is enough not to reject H0</p>
+<p>Finally, we need to see if this approach is worth it or no. OLS model
 is by definition more precise than a two-stage least square (smaller
 standard error). That’s why we want to use the instrumental approach
 only if education is an endogenous variable in the OLS. For testing that
@@ -1065,16 +1067,16 @@ we look at the Wu-Hausman test. This test compare the coefficient of
 education in the OLS and in the instrumental regression. If both
 coefficient are close enough one to another we concludes that it was not
 necessary to implement instrument variables. The null hypothesis of this
-test is that <span class="math inline">\(beta_iv - beta_OLS =
+test is that <span class="math inline">\(\beta_{iv} - \beta_{OLS} =
 0\)</span>. We here reject at a 1% level which shows that education was
-an edogenous in the OLS regression.</p>
+an endogenous in the OLS regression.</p>
 <p>Technically, the model confirms the necessity of an instrumental
 variable approach (significant Wu-Hausman test) and the consistency of
 the instruments (non-significant Sargan test). However, the instruments
 are weak (<span class="math inline">\(F &lt; 10\)</span>). The high
 number of socioeconomic status (SES) categories—resulting in 62 degrees
 of freedom—dilutes the first-stage predictive power. Because of the
-weakness of the coefficient, the model might over fit the noise. Indeed
+weakness of the coefficient, the model might overfit the noise. Indeed
 by multiplying the modality we cluster our dataset into very small group
 which tend to let too much weight on outliers.</p>
 <p>To stabilize the results and achieve a reliable causal estimation,
@@ -1151,7 +1153,7 @@ regression with detailed socioeconomic group, the p-values of F-tests
 and Sargan test shows the relevance of our instruments and the
 compatibility of the exclusion restrictions.</p>
 <p>However, it is now only possible to reject the Wu-Hausman test with a
-10% significativity level Even if this evidence of endogeneity is more
+10% significance level. Even if this evidence of endogeneity is more
 moderate than in the previous model, we will assume, because of the vast
 research on this topic in econometrics that education is an endogenous
 variable and should be treated as such. That’s why this instrument
@@ -1188,7 +1190,7 @@ earnings.</p>
 <h1>Question 3</h1>
 <p>From now on, we use the whole dataset at our disposal to be able to
 erase all unobserved individual terms - unchanged in time - that bias
-coefficients with whom we are triying to have a causal interpretation of
+coefficients with whom we are trying to have a causal interpretation of
 the hourly wage.</p>
 <p>Panel regression takes the following form : <span class="math display">\[y_{it} = \beta x_{it} + \alpha_i +
 \epsilon_{it}\]</span> Where : - <span class="math inline">\(y_{it}\)</span> is the dependent variable of
@@ -1295,11 +1297,11 @@ interpretation of the effect of explanatory variables on the dependent
 variable free of all bias due to unobserved ability of individuals
 (motivation, …).</p>
 <p>Because these unobserved terms are time invariant, the most robust
-model who assure to have a valid causal interpretation is obtain by
+model that ensures to have a valid causal interpretation is obtain by
 doing the usual least squared estimation of coefficient on a model where
 we subtract the mean over time from the original model. This method,
 called the Fixed effect is super robust but very inflexible, indeed it
-unfortunatly also prevents to capture the effect of time invariant
+unfortunately also prevents from capturing the effect of time invariant
 explanatory variables.</p>
 <p>Step 1 : Original model <span class="math display">\[y_{it} = \beta
 x_{it} + \alpha_i + \epsilon_{it}\]</span></p>
@@ -1316,20 +1318,21 @@ equation.</p>
 <p>Step 4 : Prediction <span class="math display">\[\hat{y}_{it} =
 \hat{\alpha}_i + \hat{\beta} x_{it}\]</span> Where <span class="math inline">\(\hat{\alpha}_i = \bar{y}_i - \hat{\beta}
 \bar{x}_i\)</span></p>
-<p>As said before the issue with this process is that we loose all time
+<p>As said before the issue with this process is that we lose all time
 invariant explanatory variable which is here a major issue since we want
 to find inequalities in wage due to the origin of people, which
 obviously fall in the forgotten variable. To adress this issue an other
 process is possible : the random effect regression.</p>
 <p>Instead of substracting the entire mean of variables with whom we
-work we only substracts a certain percentage (<span class="math inline">\(\theta\)</span>) of it.</p>
+work we only subtracts a certain percentage (<span class="math inline">\(\theta\)</span>) of it.</p>
 <p>Thus, the first step remains the same, but we apply in step 2 a
 quasi-difference transformation : <span class="math display">\[(y_{it} -
 \theta\bar{y}_i) = (1 - \theta) \beta_{0} + \beta (x_{it} -
 \theta\bar{x}_i) +  \gamma (1 - \theta) z_{i}+(1 - \theta) \alpha_i +
 (\epsilon_{it} - \theta\bar{\epsilon}_i) \\ \iff \\ y^*_{it} = \beta
 x^*_{it} + \gamma z^*_{i} + \nu^*_{it}\]</span> where <span class="math inline">\(\theta \in [0,1]\)</span>, <span class="math inline">\(z_{i}\)</span> are the time invariant explanatory
-variables and $^*_{it} = (1 - ) <em>i + (</em>{it} - {}_i) $</p>
+variables and <span class="math inline">\(\nu^*_{it} = (1 - \theta)
+\alpha_i + (\epsilon_{it} - \theta\bar{\epsilon}_i)\)</span></p>
 <p>Step 3 : estimation of the coefficients with the transformed equation
 (OLS) <span class="math display">\[\min_{\beta} \sum_{i=1}^{n}
 \sum_{t=1}^{T} (y^*_{it} - \beta x^*_{it} - \gamma
@@ -1389,10 +1392,10 @@ the Hausman test which mean that our random effects model is not
 consistant. The causal interpretation of coefficients that results from
 this model is thus impossible because they may incorporate the effect of
 the unobserved individual effects in it. Therefore the assumption
-according to which $ Cov(Z_{it}, _{i}) = 0, i, t$ can statistically
-consider as being false.</p>
+according to which <span class="math inline">\(Cov(Z_{it}, \alpha_{i}) =
+0, \forall i, t\)</span> can statistically consider as being false.</p>
 <p>That being said, because we assume, wrongly, in the question that the
-<span class="math inline">\(alpha_i\)</span> are exogenous to the
+<span class="math inline">\(\alpha_i\)</span> are exogenous to the
 explanatory variables, we still present below the result of the random
 effects model but these coefficients should not be seen as valid.</p>
 <pre class="r"><code>summary(re_log_reg)</code></pre>
@@ -1461,7 +1464,7 @@ approach in this study.</p>
 <h2>b) Origin variable in random effects model</h2>
 <p>This model can handle time invariant explanatory variables (cf
 previous question) thanks to the assumption of exogeneity of residuals
-and individual fixed effects. Thus, we can add the variable “origin” in
+and individual fixed effects. Thus, we can add the variable “origine” in
 the regression. However, this model does not resolve potential
 endogeneity issues. On the contrary, it requires the strong assumption
 of exogeneity of individual effects (<span class="math inline">\(Cov(X_{it}, \alpha_i) = 0\)</span>, i, t) to be
@@ -1493,12 +1496,12 @@ df_active &lt;- df %&gt;%
 pdata_active &lt;- pdata.frame(df_active, index = c(&quot;id_individu&quot;, &quot;t&quot;))</code></pre>
 <p><code>Acteu</code> is the binary dependent variable we want to study,
 but it’s more convenient to take a binary variable that takes its values
-in {0,1} which is better for having a probability interpretation of the
-results. We create from <code>chomeur</code> (indicator of being
-unemployed), the indicator of being employed which we will use in the
-next question as the dependent variable. The closest the predicted value
-will be closed to one, the more the model will predict a high
-probability that the individual will be employed.</p>
+in {0,1} which is better for having a probabilistic interpretation of
+the results. We create from “chomeur” (indicator of being unemployed),
+the indicator of being employed which we will use in the next question
+as the dependent variable. The closest the predicted value will be
+closed to one, the more the model will predict a high probability that
+the individual will be employed.</p>
 <pre class="r"><code>pdata_active &lt;- pdata_active %&gt;% 
   mutate(
     being_employed = ifelse(chomeur == 1, 0, 1)
@@ -1542,8 +1545,7 @@ pdata_active &lt;- pdata_active %&gt;%
     # 1 corresponds to people having a degree above two years post-baccalaureate
     education = fct_relevel(education, &quot;1&quot;)
   )</code></pre>
-<p>In this question we use the exact same processus than in question
-3/</p>
+<p>In this question we use the exact same process as in question 3/</p>
 <pre class="r"><code># formula fitting R required function forms
 binary_formula &lt;- reformulate(termlabels = explanatory_variables, response = binary_dependent_variable)
 print(binary_formula)</code></pre>
@@ -1626,7 +1628,7 @@ percentage points compared to individual with french origin.</p>
 <p>Regarding education, the model confirms that lower-quality degrees
 (higher factor values) lead to worse employment outcomes. For instance,
 individuals with the lowest degree level (factor 07 : no qualification
-or primary school certificate) are 11.7 percentage point less likely to
+or primary school certificate) are 11.7 percentage points less likely to
 be employed than the most educated group.</p>
 <p>Geography also plays a key role. indeed, the model shows an
 interesting result : living in larger urban areas (higher tuu_r factors)
@@ -1653,9 +1655,9 @@ explaining employment inequalities.</p>
 <div id="b-correlation-issue" class="section level2">
 <h2>b) correlation issue</h2>
 <p>If we assume correlation between individual effects and the
-regressors, we will be faced to the same issue as in question 3/. In a
-fixed effects model all time invariant variables, such as origin,
-disappear and cannot be handled by the model.</p>
+regressors, we will face the same issue as in question 3/. In a fixed
+effects model all time invariant variables, such as origin, disappear
+and cannot be handled by the model.</p>
 </div>
 </div>
 <div id="question-5" class="section level1">
@@ -1685,14 +1687,17 @@ Y_{it} = \rho Y_{i,t-1} + \beta X_{it} +\alpha_i + \epsilon_{it}
 0\)</span> i.e. the present regressor <span class="math inline">\(X_{it}\)</span> does not depend on the past, the
 present and the future shocks <span class="math inline">\(\epsilon_{it&#39;}\)</span>. This hypothesis is
 violated here because, by construction, <span class="math inline">\(Y_{it}\)</span> is correlated with <span class="math inline">\(\epsilon_{it}\)</span> and since <span class="math inline">\(Y_{i,t+1}\)</span> depends on <span class="math inline">\(Y_{it}\)</span> as a regressor <span class="math inline">\(X_{i, t+1}\)</span>, <span class="math inline">\(X_{i,t+1}\)</span> is correlated with a past
-shock. \</p>
-<p>The weak exogeneity means $t’ t, E[X_{it}_{it’}] = 0 $ i.e. the
-present regressor <span class="math inline">\(X_{it}\)</span> does not
-depend on the present and future shocks <span class="math inline">\(\epsilon_{it&#39;}\)</span> but might depend on
+shock.<br />
+</p>
+<p>The weak exogeneity means <span class="math inline">\(\forall t&#39;
+\geq t, E[X_{it}\epsilon_{it&#39;}] = 0\)</span> i.e. the present
+regressor <span class="math inline">\(X_{it}\)</span> does not depend on
+the present and future shocks <span class="math inline">\(\epsilon_{it&#39;}\)</span> but might depend on
 the past shocks. This hypothesis is much more realistic because one
 cannot perfectly anticipate future random shocks when your current
-status is determined. \ To estimate such a model, we cannot simply use
-the Within estimator. Indeed, it subtracts the mean <span class="math inline">\(\bar{Y_i}\)</span> of the individual i as follows:
+status is determined.<br />
+To estimate such a model, we cannot simply use the Within estimator.
+Indeed, it subtracts the mean <span class="math inline">\(\bar{Y_i}\)</span> of the individual i as follows:
 <span class="math display">\[
 Y_{it} - \bar{Y_i} = \rho (Y_{i,t-1} - \bar{Y_i}) + (\epsilon_{it} -
 \bar{\epsilon_i})
@@ -1702,8 +1707,8 @@ with <span class="math inline">\(\epsilon_{it}\)</span> and thus <span class="ma
 <span class="math inline">\(Y_{i,t-1}\)</span>. Therefore, the regressor
 <span class="math inline">\((Y_{i,t-1} - \bar{Y_i})\)</span> is
 correlated with the error term <span class="math inline">\(\epsilon_{it}
-- \bar{\epsilon_i}\)</span> and the estimator is inconsistent. \
-Instead, we firstly use the First Differences to eliminate <span class="math inline">\(\alpha_i\)</span> as follows: <span class="math display">\[
+- \bar{\epsilon_i}\)</span> and the estimator is inconsistent.<br />
+Instead, we first use the First Differences to eliminate <span class="math inline">\(\alpha_i\)</span> as follows: <span class="math display">\[
 \Delta Y_{it} = \rho \Delta Y_{i,t-1} + \Delta \epsilon_{it}
 \]</span> The problem is that <span class="math inline">\(Y_{i,
 t-1}\)</span> is, by construction, a function of the error term from the
@@ -1718,8 +1723,8 @@ the level errors (<span class="math inline">\(\epsilon_{it}\)</span>))
 which is definitely related to <span class="math inline">\(y_{i,t-1}\)</span> and under weak exogeneity,
 <span class="math inline">\(y_{i,t-2}\)</span> was determined before the
 shocks <span class="math inline">\(\epsilon_{i,t-1}\)</span> and <span class="math inline">\(\epsilon_{it}\)</span> occurred and thus is not
-correlated with the error term of the differenced equation. \ To
-implement such a method, we use the function pgmm of R.</p>
+correlated with the error term of the differenced equation.<br />
+To implement such a method, we use the function pgmm of R.</p>
 <pre class="r"><code>pdata_dyn &lt;- pdata.frame(df_active, index = c(&quot;id_individu&quot;, &quot;t&quot;))
 
 # Estimation of the Dynamic Model
@@ -1766,7 +1771,7 @@ summary(reg_dyn)</code></pre>
 </div>
 <div id="b-interpretation-of-the-results" class="section level2">
 <h2>b) Interpretation of the results</h2>
-<p>Firstly, we can analyse statistical tests. \ Indeed, the Sargan test
+<p>Firstly, we can analyse statistical tests. Indeed, the Sargan test
 shows a p-value = 0.88 which means we do not reject <span class="math inline">\(H_0\)</span> (which is the validity of the
 over-identifying restrictions) so our instruments are exogenous and
 correctly specified. Then, for the autocorrelation test of order 1 <span class="math inline">\(AR(1)\)</span>, the p-value is <span class="math inline">\(\leq 0.01\)</span> so we reject <span class="math inline">\(H_0\)</span> (which is the absence of first-order
@@ -1779,12 +1784,12 @@ current error term <span class="math inline">\(\Delta
 \epsilon_{it}\)</span>, ensuring the consistency of the estimator.
 Finally, for the Wald test, the p-value is <span class="math inline">\(\leq 0.01\)</span> so we reject <span class="math inline">\(H_0\)</span> (which is the joint nullity of the
 coefficients). This confirms that our explanatory variables have a
-significant global impact on the probability of being unemployed.\</p>
+significant global impact on the probability of being unemployed.</p>
 <p>Secondly, we can focus on economic interpretation of state
-dependence. \ Indeed, the coefficient of is <span class="math inline">\(0.620\)</span> and is significant. Therefore, all
+dependence. Indeed, the coefficient of is <span class="math inline">\(0.620\)</span> and is significant. Therefore, all
 else being equal, having been unemployed in the previous quarter
 increases the probability of remaining unemployed in the current quarter
-by 62 percentage points.\</p>
+by 62 percentage points.</p>
 </div>
 </div>
 <div id="question-6" class="section level1">
@@ -1801,7 +1806,7 @@ distribution function (Normal or Logistic). Therefore, applying linear
 transformations like Within and First-Difference is not applicable here
 to eliminate the <span class="math inline">\(\alpha_i\)</span> unlike in
 linear models, where <span class="math inline">\(\alpha_i\)</span> is
-additive and can be canceled out by substraction.</p>
+additive and can be canceled out by subtraction.</p>
 </div>
 <div id="b-probit-and-logit-model" class="section level2">
 <h2>b) Probit and Logit Model</h2>
@@ -1848,7 +1853,7 @@ avg_slopes(reg_probit, variables = &quot;origine&quot;)</code></pre>
 ## 
 ## Term: origine
 ## Type: response</code></pre>
-<p>Therefore, we notice that the estimated AMEs for the “origin”
+<p>Therefore, we notice that the estimated AMEs for the “origine”
 variable are nearly identical between the probit and the logit model.
 For example, the effect of the Maghreb (06) is estimated significantly
 at 10.9 percentage points in the probit and 10.8 in the logit. That
@@ -1865,16 +1870,28 @@ is the focus of question (c).</p>
 </div>
 <div id="c-controlling-for-education-level-the-rivers-vuong-method" class="section level2">
 <h2>c) Controlling for education level: the Rivers-Vuong method</h2>
-For this question, we want to estimate the effect of (<span class="math inline">\(E\)</span>) on the probability of being unemployed
+<p>For this question, we want to estimate the effect of (<span class="math inline">\(E\)</span>) on the probability of being unemployed
 (<span class="math inline">\(Y\)</span>): <span class="math display">\[
 P(Y=1 | X, W) = \Phi(X\beta + \gamma E + u)
 \]</span> However, <span class="math inline">\(E\)</span> is endogenous
 because it is correlated with the error term <span class="math inline">\(u\)</span> (that comes from an omitted variable
 like innate ability). If we do not fix this, the coefficient <span class="math inline">\(\gamma\)</span> will capture both the value of the
 degree and the person’s inherent talent. Therefore, we will use the
-Rivers-Vuong method with the probit model (because its method assume
+Rivers-Vuong method with the probit model (because its method assumes
 that errors follow a Normal Distribution). Because the model is a
-probit, we cannot use 2SLS. \
+probit, we cannot use 2SLS.</p>
+<ul>
+<li>Step 1 (The Reduced Form (OLS)) : We compute the regression of <span class="math inline">\(E\)</span> on all variables <span class="math inline">\(X\)</span> and our instruments <span class="math inline">\(Z\)</span> as follows: <span class="math display">\[
+  E = X \beta_X + Z \beta_Z + v
+  \]</span> And that gives us the residual <span class="math inline">\(\hat{v} = E - \hat{E}\)</span> which intuitively
+represents the unobserved part of education.</li>
+<li>Step 2 (The Augmented Probit (Structural Form)) : We then run again
+the probit model but we include the residual <span class="math inline">\(\hat{v}\)</span> as a regressor as follows: <span class="math display">\[
+  P(Y=1| X, W, \hat{v}) = \Phi(X \beta_X + \gamma E + \rho \hat{v} +
+\epsilon)
+  \]</span> The intuition is that by adding , we can now control the
+endogeneity.</li>
+</ul>
 <pre class="r"><code># 1. Step 1: Reduced Form (OLS)
 # We regress the endogenous variable (higher_ed) on all exogenous 
 # covariates and the instruments (parents&#39; CSP).
@@ -1960,17 +1977,16 @@ so we cannot reject <span class="math inline">\(H_0\)</span> which is
 conclude on the endogeneity of (because if <span class="math inline">\(\rho=0\)</span>, the error of education would not
 have an impact on being unemployed so education would be exogenous). The
 power of instrumental variables might be a reason. However, the
-proximity to the 10% threshold allows us to quality. \ Moreover, the
-coefficient of is <span class="math inline">\(-0.604\)</span> with a
-p-value <span class="math inline">\(\leq 0.01\)</span> so it is
-significant. In short, having a higher degree decreases the probability
-of being unemployed by 6.04 percentage points. \ Finally, we also
-observe that the coefficient of the Maghreb origin (06) is again
-significant and positive. That tells us that even after controlling for
-education level, being of Maghreb origin increases the probability of
-being unemployed by 10.8 percentage points. In other words, the penalty
-of origin 06 is not only due to education but to a specific
-inequality.</p>
+proximity to the 10% threshold allows us to qualify.</p>
+<p>Moreover, the coefficient of is <span class="math inline">\(-0.604\)</span> with a p-value <span class="math inline">\(\leq 0.01\)</span> so it is significant. In short,
+having a higher degree decreases the probability of being unemployed by
+6.04 percentage points.</p>
+<p>Finally, we also observe that the coefficient of the Maghreb origin
+(06) is again significant and positive. That tells us that even after
+controlling for education level, being of Maghreb origin increases the
+probability of being unemployed by 10.8 percentage points. In other
+words, the penalty of origin 06 is not only due to education but to a
+specific inequality.</p>
 </div>
 </div>
 
